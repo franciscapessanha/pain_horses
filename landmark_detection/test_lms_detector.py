@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jan 24 12:05:55 2020
+
+@author: franciscapessanha
+"""
+
+#%%============================================================================
+#                       IMPORTS AND INITIALIZATIONS
+#%%============================================================================
+
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import glob
+import menpo.io as mio
+from functools import partial
+from menpo.base import LazyList
+from menpofit.dlib.fitter import DlibERT
+from menpofit.sdm import RegularizedSDM
+from menpo.feature import vector_128_dsift
+from menpofit.error.base import euclidean_bb_normalised_error
+import cv2 as cv
+from menpo.shape import mean_pointcloud
+from train_lms_detector import sorted_image_import
+import math
+import pickle
+
+DATASET = os.path.join(os.getcwd(),'..','dataset')
+ABS_POSE_FITTER = os.path.join(DATASET,'abs_pose')
+RESULTS = os.path.join(os.getcwd(), 'results')
+if not os.path.exists(RESULTS):
+	os.mkdir(RESULTS)
+
+
+ANIMAL = 'horse'
+if ANIMAL == 'donkey':
+    ABS_POSE = os.path.join(DATASET,'abs_pose_donkeys')
+elif ANIMAL == 'horse':
+  ABS_POSE = os.path.join(DATASET,'abs_pose')
+
+
+N_FOLDS = 3
+SR = 0.06
+ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
+AUG = 'aug_2'
+#MODE = 'final_model'
+#%%============================================================================
+#                       AUXILIAR FUNCTIONS
+#==============================================================================
+def get_lms_error(plm_errors, label):
+  if label == 'frontal':
+    ear_error = [e for e in np.hstack(plm_errors[:,:6]) if e != 0]
+    print('Ears mean error: ', np.mean(ear_error))
+    print('Ears success rate: ',len(np.where(np.hstack(ear_error) < SR)[0]) / len(np.hstack(ear_error)))
+
+    nose_error =  [e for e in np.hstack(plm_errors[:,12:24]) if e != 0]
+    print('Nose mean error: ', np.mean(nose_error))
+    print('Nose success rate: ',len(np.where(np.hstack(nose_error) < SR)[0]) / len(np.hstack(nose_error)))
+
+    eye_error = [e for e in np.hstack(plm_errors[:,6:12]) if e != 0]
+    print('Eye mean error: ', np.mean(eye_error))
+    print('Eye success rate: ',len(np.where(np.hstack(eye_error) < SR)[0]) / len(np.hstack(eye_error)))
+
+    r_eye_error =  [e for e in np.hstack(plm_errors[:,24:30]) if e != 0]
+    print('Second eye mean error: ', np.mean(r_eye_error))
+    print('Second eye success rate: ',len(np.where(np.hstack(r_eye_error) < SR)[0]) / len(np.hstack(eye_error)))
+
+    return [np.mean(ear_error), np.mean(nose_error), np.mean(eye_error), np.mean(r_eye_error)]
+	#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  elif label == 'tilted':
+    ear_error =  [e for e in   np.hstack(plm_errors[:,:6]) if e != 0]
+    print('Ears mean error: ', np.mean(ear_error))
+    print('Ears success rate: ',len(np.where(np.hstack(ear_error) < SR)[0]) / len(np.hstack(ear_error)))
+
+    nose_error = [e for e in  np.hstack(plm_errors[:,12:18]) if e != 0]
+    print('Nose mean error: ', np.mean(nose_error))
+    print('Nose success rate: ',len(np.where(np.hstack(nose_error) < SR)[0]) / len(np.hstack(nose_error)))
+
+    eye_error = [e for e in  np.hstack(plm_errors[:,6:12]) if e != 0]
+    print('Eye mean error: ', np.mean(eye_error))
+    print('Eye success rate: ',len(np.where(np.hstack(eye_error) < SR)[0]) / len(np.hstack(eye_error)))
+
+    mouth_error =  [e for e in  np.hstack(plm_errors[:,25:28]) if e != 0]
+    print('Mouth mean error: ', np.mean(mouth_error))
+    print('Mouth success rate: ',len(np.where(np.hstack(mouth_error) < SR)[0]) / len(np.hstack(mouth_error)))
+
+    return [np.mean(ear_error), np.mean(nose_error), np.mean(eye_error), np.mean(mouth_error)]
+	#:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  elif label == 'profile':
+    ear_error = [e for e in np.hstack(plm_errors[:,:3]) if e != 0]
+    print('Ears mean error: ', np.mean(ear_error))
+    print('Ears success rate: ',len(np.where(np.hstack(ear_error) < SR)[0]) / len(np.hstack(ear_error)))
+
+    nose_error = [e for e in np.hstack(plm_errors[:,11:17]) if e != 0]
+    print('Nose mean error: ', np.mean(nose_error))
+    print('Nose success rate: ',len(np.where(np.hstack(nose_error) < SR)[0]) / len(np.hstack(nose_error)))
+
+    eye_error = [e for e in np.hstack(plm_errors[:,17:23]) if e != 0]
+    print('Eye mean error: ', np.mean(eye_error))
+    print('Eye success rate: ',len(np.where(np.hstack(eye_error) < SR)[0]) / len(np.hstack(eye_error)))
+
+    mouth_error = [e for e in  np.hstack(plm_errors[:,7:11]) if e != 0]
+    print('Mouth mean error: ', np.mean(mouth_error))
+    print('Mouth success rate: ',len(np.where(np.hstack(mouth_error) < SR)[0]) / len(np.hstack(mouth_error)))
+
+    cheek_error =  [e for e in  np.hstack(plm_errors[:,3:7]) if e != 0]
+    print('Cheek mean error: ', np.mean(cheek_error))
+    print('Cheek success rate: ',len(np.where(np.hstack(cheek_error) < SR)[0]) / len(np.hstack(cheek_error)))
+
+    return [np.mean(ear_error), np.mean(nose_error), np.mean(eye_error), np.mean(mouth_error), np.mean(cheek_error)]
+
+#==============================================================================
+def test_eval(fitter, images, files, mean = False, pose ='',  verbose=True, save_images = False, folder = DATASET, fold = ''):
+  if not os.path.exists(folder):
+    os.mkdir(folder)
+
+  error = 0
+  errors = []
+  plm_errors = []
+
+  all_errors = []
+  for i, image in enumerate(images):
+
+    #print(files[i])
+    lms_gt = image.landmarks['PTS'].lms.as_vector().reshape((-1, 2))
+    if verbose:
+      #print('Tested', i+1, ' of ', len(images), '\n')
+      pass
+    # use the bounding box (i.e. mean shape) to initialise
+    result = fitter.fit_from_bb(image = image, bounding_box =
+                    image.landmarks['PTS'].bounding_box(),
+                    gt_shape=image.landmarks['PTS'])
+
+    lms_pred = result.final_shape.as_vector().reshape((-1, 2))
+
+
+    open_cv_frame = image.as_PILImage().convert('RGB')
+    open_cv_frame = np.array(open_cv_frame)
+
+    h, w = np.shape(open_cv_frame)[:2]
+
+    # Ground truth point is out of the frame
+    index_to_exclude = []
+    for p in range(len(lms_gt)):
+      if lms_gt[p,0] >= h or lms_gt[p,1] >= w or lms_gt[p,1] <= 0 or lms_gt[p,0] <= 0:
+        index_to_exclude.append(p)
+
+    # Mempo works with (y,x) and not (x,y)!
+    if label == 'frontal':
+      eye_center = [(lms_gt[9,1] + lms_gt[6,1])/2, (lms_gt[8,0] + lms_gt[11,0])/2]
+      nose_center = [(lms_gt[12,1] + lms_gt[14,1])/2, (lms_gt[16,0] + lms_gt[13,0])/2]
+
+      distance_1 = list(np.array(eye_center) - np.array(nose_center))
+      distance_1 = [abs(i) for i in distance_1]
+      yard_stick_distance_1 = math.sqrt(distance_1[0] **2 + distance_1[1] ** 2)
+      eye_2_center = [(lms_gt[26,1] + lms_gt[29,1])/2, (lms_gt[24,0] + lms_gt[27,0])/2]
+      nose_2_center = [(lms_gt[17,1] + lms_gt[22,1])/2, (lms_gt[20,0] + lms_gt[18,0])/2]
+      distance_2 = list(np.array(eye_2_center) - np.array(nose_2_center))
+      distance_2 = [abs(i) for i in distance_2]
+      yard_stick_distance_2 = math.sqrt(distance_2[0] **2 + distance_2[1] ** 2)
+      norm = np.mean([yard_stick_distance_1,yard_stick_distance_2], axis = 0)
+
+    elif label == 'tilted':
+      eye_center = [(lms_gt[9,1] + lms_gt[6,1])/2, (lms_gt[8,0] + lms_gt[11,0])/2]
+      #select the nose center
+      nose_center = [(lms_gt[14,1] + lms_gt[12,1])/2, (lms_gt[16,0] + lms_gt[13,0])/2]
+      #calculate the distance
+      yard_stick = list(np.array(eye_center) - np.array(nose_center))
+      norm = math.sqrt(yard_stick[0] **2 + yard_stick[1] ** 2)
+
+    elif label == 'profile':
+      eye_center = [(lms_gt[17,1] + lms_gt[20,1])/2, (lms_gt[22,0] + lms_gt[19,0])/2]
+      nose_center = [(lms_gt[12,1] + lms_gt[15,1])/2, (lms_gt[11,0] + lms_gt[13,0])/2]
+      yard_stick = list(np.array(eye_center) - np.array(nose_center))
+      norm = math.sqrt(yard_stick[0] **2 + yard_stick[1] ** 2)
+
+    #eye_center = [eye_center[-1], eye_center[0]]
+    #nose_center = [nose_center[-1], nose_center[0]]
+    #cv.line(open_cv_frame, tuple([int(e) for e in eye_center]), tuple([int(n) for n in nose_center]), (255,255,255), thickness=3)
+
+    errors_image = []
+    for k in range(len(lms_pred)):
+      if k not in index_to_exclude:
+        e = np.sqrt((lms_pred[k,0] - lms_gt[k,0]) ** 2 + (lms_pred[k,1] - lms_gt[k,1]) ** 2) / norm
+        error += e
+        errors_image.append(e)
+      else:
+        e = 0
+        errors_image.append(e)
+    plm_errors.append(errors_image)
+
+    r = 3
+    file = files[i].split('/')[-1].split('.')[0]
+
+    if save_images:
+      gt_frame = open_cv_frame.copy()
+
+      j = 0
+      for (y, x) in lms_pred:
+        cv.circle(open_cv_frame, (int(x), int(y)), r, (255,0,0), thickness=-1, lineType=cv.LINE_AA)
+        j += 1
+
+      file = files[i].split('/')[-1].split('.')[0]
+      cv.imwrite(os.path.join(folder, '%s_%.3f.jpg' % (file,np.mean(plm_errors[-1]))), cv.cvtColor(open_cv_frame, cv.COLOR_BGR2RGB))
+      #print(os.path.join(folder, '%s_%.3f_gt.jpg' % (file,np.mean(plm_errors[-1]))))
+      for k in range(len(lms_pred)):
+        cv.line(open_cv_frame, (int(lms_pred[k, 1]), int(lms_pred[k, 0])), (int(lms_gt[k, 1]), int(lms_gt[k, 0])), (255,255,255), thickness=2)
+
+      cv.imwrite(os.path.join(folder, '%s_%.3f_lines.jpg' % (file,np.mean(plm_errors[-1]))), cv.cvtColor(open_cv_frame, cv.COLOR_BGR2RGB))
+
+
+      j = 0
+      for (y, x) in lms_gt:
+        cv.circle(gt_frame, (int(x), int(y)), r, (255,0,0), thickness=-1, lineType=cv.LINE_AA)
+        j += 1
+
+      cv.imwrite(os.path.join(folder, '%s_gt.jpg' % file), cv.cvtColor(gt_frame, cv.COLOR_BGR2RGB))
+
+        #print(os.path.join(folder, '%s_%.3f_gt.jpg' % (file,np.mean(plm_errors[-1]))))
+      for k in range(len(lms_pred)):
+        cv.line(open_cv_frame, (int(lms_pred[k, 1]), int(lms_pred[k, 0])), (int(lms_gt[k, 1]), int(lms_gt[k, 0])), (255,255,255), thickness=2)
+
+      #cv.imwrite(os.path.join(folder, '%s_%.3f.jpg' % (file,np.mean(plm_errors[-1]))), cv.cvtColor(gt_frame, cv.COLOR_BGR2RGB))
+
+    all_errors.append([file, errors_image])
+
+  with open(os.path.join(RESULTS,'%s_%s_results_%s.pickle' % (fold,AUG, label)), 'wb') as f:
+  #with open(os.path.join(RESULTS,'full_%s_results_%s.pickle' % (AUG, label)), 'wb') as f:
+    # Pickle the 'data' dictionary using the highest protocol available.
+    pickle.dump(all_errors, f)
+
+  plm_errors = np.vstack(plm_errors)
+  per_roi_errors = get_lms_error(plm_errors, label)
+
+  with open(os.path.join(RESULTS,'%s_%s_results_per_roi_%s.pickle' % (fold,AUG, label)), 'wb') as f:
+		#with open(os.path.join(RESULTS,'full_%s_results_per_roi_%s.pickle' % (AUG, label)), 'wb') as f:
+    # Pickle the 'data' dictionary using the highest protocol available.
+    pickle.dump(per_roi_errors, f)
+
+  print('Mean error:     ', np.mean([e for e in np.hstack(plm_errors) if e != 0]))
+  print('Less than 6% error:', len(np.where(np.hstack([e for e in np.hstack(plm_errors) if e != 0]) < SR) [0]) / len(np.hstack([e for e in np.hstack(plm_errors) if e != 0])))
+
+  return plm_errors
+
+def get_test_results(path_to_images, fitter_path,save_images_folder, cross_val = False, fold = 0):
+	images, files = sorted_image_import(path_to_images)
+	if cross_val == True:
+		fold = np.vstack(pickle.load(open(os.path.join(ANGLES, '%s_pain_val_fold_%d_angles.pickle' % (save_images_folder.split('/')[-1], k)), 'rb')))
+		indexes_val = [i for i in range(len(files)) if files[i].split('/')[-1].split('.')[0] + '.jpg' in fold[:,0]]
+		file_list = [files[i] for i in indexes_val]
+		images = LazyList([partial(mio.import_image,f) for f in file_list])
+		landmarks = images.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
+
+		fitter = mio.import_pickle(fitter_path)
+		errors = test_eval(fitter, images, files, save_images_folder, save_images = True, fold = k)
+
+	else:
+		path_to_images = os.path.join(ABS_POSE,label,'test/')
+		images, files = sorted_image_import(path_to_images)
+		fitter = mio.import_pickle(fitter_path)
+		errors = test_eval(fitter, images, files, save_images_folder, save_images = True)
+
+#%%============================================================================
+#                                   MAIN
+#==============================================================================
+
+for label in ['tilted']:
+	for k in range(1):
+		#prefix = '%s_ert_fold_%d_' %(AUG,k) + label + '_pert_30.pkl'
+		prefix = 'ert_aug_pert_0_final_' + label + '_pert_30.pkl'
+		#prefix = 'ert_' + label + '_pert_30.pkl'
+		get_test_results(os.path.join(ABS_POSE,label, 'train'),
+										 os.path.join(ABS_POSE_FITTER , label,'train', 'fitters', prefix),
+										 os.path.join(os.getcwd(), label), cross_val = False, fold = 0)
+
+
