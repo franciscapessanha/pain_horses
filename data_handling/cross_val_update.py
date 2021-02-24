@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Wed Feb 24 16:09:18 2021
+
+@author: Pessa001
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Tue May 26 16:17:14 2020
 
 @author: franciscapessanha
@@ -29,7 +37,7 @@ PLOTS = os.path.join(os.getcwd(), 'plots')
 if not os.path.exists(PLOTS):
 	os.mkdir(PLOTS)
 
-
+N_FOLDS = 3
 DATASET = os.path.join(os.getcwd(), '..', 'dataset')
 ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
 
@@ -51,6 +59,45 @@ for folder in ['frontal', 'tilted','profile']:
 data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
 
 pain = pd.read_excel(os.path.join(DATASET, 'pain_annotations.xlsx'), index_col=0, engine='openpyxl')
+horse_id = pain.values[:, 8] #just horses (that is why the 1855)
+
+# Define cross validation based on horses ids
+# ===================================================
+horses_with_id = [[i+1, horse_id[i]] for i in range(len(horse_id[:1855])) if not math.isnan(horse_id[i])]
+horses_with_id = np.vstack(horses_with_id)
+
+unique_ids = np.unique(horse_with_id[:,1], axis=0)
+
+
+all_groups =[]
+for id_ in unique_ids:
+    group = []
+    for horse in horses_with_id:
+        if horse[1] == id_:
+            group.append(horse[0])
+    all_groups.append(group)       
+# divide animals per id
+
+all_groups.sort(key = len, reverse = True)
+
+val_size = int((len(horses_with_id) * 0.70)/3)
+test_size = int(len(horses_with_id) * 0.30)
+
+desired_size = [val_size, val_size, val_size, test_size]
+  
+cross_val = [all_groups[i] for i in range(N_FOLDS + 1)] 
+for i in range(N_FOLDS + 1): all_groups.pop(i)
+
+
+for i, set_ in enumerate(cross_val):
+    final_size = desired_size[i]
+    current_size = len(set_)
+    while current_size < final_size and len(all_groups) != 0:
+        set_ = [set_, all_groups[-1]]
+        set_ = np.hstack(set_)
+        cross_val[i] = set_
+        current_size = len(set_)
+        all_groups.pop(-1)
 # %%============================================================================
 #                               	AUXILIAR FUNCTIONS
 # ==============================================================================

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from PIL import ExifTags
 from PIL import Image
 
-DATASET = os.path.join(os.getcwd(), 'dataset')
+DATASET = os.path.join(os.getcwd(), '..','dataset')
 lms_folder = os.path.join(DATASET, 'landmarks')
 
 #%%============================================================================
@@ -20,11 +20,13 @@ lms_folder = os.path.join(DATASET, 'landmarks')
 #============================================================================
 
 filename = os.path.join(DATASET, 'pose_annotations.xlsx')
-data = pd.read_excel(filename, sheet_name='conc_sheet')
+data = pd.read_excel(filename, sheet_name='conc_sheet', engine='openpyxl')
+data_len = [d for d in data.values if not math.isnan(d[0])] #there was a problem with the length of the excel (a lot of rows full of nan values)
+data = data[: len(data_len)] 
 
 #%% Change image col to image path
 #-----------------------------------------------------------------------------
-data['image'] = [os.path.join('dataset', 'images', str(d) + '.jpg') for d in data.loc[:,'image'].values]
+data['image'] = [os.path.join(DATASET, 'images', str(int(d)) + '.jpg') for d in data.loc[:,'image'].values]
 
 
 #%% Convert pose from string to number
@@ -180,4 +182,4 @@ for i, info in enumerate(data.values):
         print(i)
 """
 
-#data.to_pickle(os.path.join(DATASET, 'lms_annotations.pkl'))
+data.to_pickle(os.path.join(DATASET, 'lms_annotations_2.0.pkl'))
