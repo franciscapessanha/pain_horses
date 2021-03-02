@@ -82,21 +82,24 @@ def rotate_image(label, image, points, angle):
     n_h, n_w, _ = np.shape(new_image)
     ones = np.ones(shape=(len(points), 1))
     points_ones = np.hstack([points, ones])
+    #new_points = cv.transform(points_ones, M)
     new_points = rot.dot(points_ones.T).T
     min_x = min(new_points[:, 0])
     max_x = max(new_points[:, 0])
     min_y = min(new_points[:, 1])
     max_y = max(new_points[:, 1])
-    bw = max_x - min_x
-    bh = max(max_y - min_y, 0.10*h)
+    bw = max(max_x - min_x, 0.05*h)
+    bh = max(max_y - min_y, 0.05*h)
 
     #print('min x: ', min_x, 'max x: ', max_x, 'min_y: ', min_y, 'max_y: ', max_y)
     min_x = max(0, int(min_x - 0.10 * bw))
     max_x = min(int(max_x + 0.10 * bw),n_w)
     min_y = max(0, int(min_y - 0.10 * bh))
     max_y = min(int(max_y + 0.10 * bh),n_h)
-    #print('min x: ', min_x, 'max x: ', max_x, 'min_y: ', min_y, 'max_y: ', max_y)
 
+    #print('min x: ', min_x, 'max x: ', max_x, 'min_y: ', min_y, 'max_y: ', max_y)
+    #print('len image: ', np.shape(new_image))
+    #print('initial lms: ', points)
     crop_img = new_image[min_y:max_y, min_x:max_x]
 
     n_h, n_w = crop_img.shape[:2]
@@ -104,6 +107,8 @@ def rotate_image(label, image, points, angle):
         return [], new_points
     ratio = n_h/n_w
     crop_img = resize_img(crop_img, ratio)
+
+    #print('len crop image: ', np.shape(crop_img))
 
     return crop_img, new_points
 
@@ -121,6 +126,7 @@ def rotate_horizontaly(label, img, points, base, top):
 
     else:
         angle = 0
+
 
     n_img, n_points = rotate_image(label, img, points, angle)
 
@@ -231,8 +237,7 @@ def get_nostrils(img, lms, pose):
         base = r_nostril[0]
         top = r_nostril[2]
         r_nostril, r_rot = rotate_vertically(label, img, r_nostril, base, top)
-        r_nostril = []
-        r_rot = 0
+
 
     elif abs(pose) == 30:
         l_nostril = [lms[i] for i in [*range(12,18)]]
@@ -292,13 +297,13 @@ def get_cheeks(img, lms, pose):
 # ==============================================================================
 
 def get_all_features(list_imgs, O, PPC, CPB, mean_ratio = 0):
-    if mean_ratio == 0 or mean_ratio:
+    if mean_ratio == 0:
         if len(list_imgs[0]) != 1:
             ratios_0 = [np.shape(img[0])[0]/np.shape(img[0])[1] for img in list_imgs if img[0] != []]
             ratios_1 = [np.shape(img[1])[0]/np.shape(img[1])[1] for img in list_imgs if img[1] != []]
             mean_ratio = [np.mean(ratios_0), np.mean(ratios_1)]
         else:
-            ratios = [np.shape(img)[0]/np.shape(img)[1] for img in list_imgs]
+            ratios = [np.shape(img)[0]/np.shape(img)[1] for img in list_imgs if img != []]
             mean_ratio = np.mean(ratios)
 
     all_HOG = []
@@ -323,9 +328,14 @@ def get_all_features(list_imgs, O, PPC, CPB, mean_ratio = 0):
         else:
             if img == []:
                 img = np.zeros((200,200, 3))
+
             img = np.squeeze(img)
             new_img = resize_img(img,mean_ratio)
             fd =  hog(new_img,  orientations= O, pixels_per_cell=(PPC,PPC), cells_per_block=(CPB, CPB), multichannel=True)
             all_HOG.append(fd)
 
+
+
+    #return the features, a 4096 vector
+    #return all_HOG, mean_ratio, features_CNN
     return all_HOG, mean_ratio

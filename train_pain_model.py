@@ -12,7 +12,6 @@ Created on Tue Jun  9 09:54:12 2020
 # ==============================================================================
 
 import matplotlib.pyplot as plt
-
 import numpy as np
 import os
 import pickle
@@ -73,7 +72,7 @@ data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
 
 pain_scores = pd.read_excel(os.path.join(DATASET, 'pain_annotations.xlsx'), index_col=0, engine='openpyxl')
 
-
+N_CLASSES = 2 #2 or 3
 # %%============================================================================
 #                            AUXILIAR FUNCTIONS
 # ==============================================================================
@@ -84,13 +83,13 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
     train_angles = [train_angles[i]for i in range(len(train_y)) if train_y[i] != []]
     train_angles = [[a[0][0], a[0][1], abs(a[0][2])] for a in train_angles]
     train_rot = [train_rot[i] for i in range(len(train_y)) if train_y[i] != []]
-    train_y = [train_y[i] for i in range(len(train_y)) if train_y[i] != []]
+    train_y = np.hstack([train_y[i] for i in range(len(train_y)) if train_y[i] != []])
 
     val_x = [val_x[i] for i in range(len(val_y)) if val_y[i] != []]
     val_angles = [val_angles[i] for i in range(len(val_y)) if val_y[i] != []]
     val_angles = [[a[0][0], a[0][1], abs(a[0][2])] for a in val_angles]
     val_rot = [val_rot[i] for i in range(len(val_y)) if val_y[i] != []]
-    val_y = [val_y[i] for i in range(len(val_y)) if val_y[i] != []]
+    val_y = np.hstack([val_y[i] for i in range(len(val_y)) if val_y[i] != []])
 
 
 
@@ -98,8 +97,9 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
     HOGS_train = np.asarray(HOGS_train)
 
     x_train = np.concatenate((np.vstack(HOGS_train), np.vstack(train_angles), np.vstack(train_rot)), axis = 1)
-    train_y = [1 if y[0] == 2 else y[0] for y in train_y]
-    #train_y = [y for y in train_y]
+    print('train_y: ', len(train_y))
+    train_y = np.hstack(train_y)
+    train_y = [1 if y == 2 else y for y in train_y]
 
     modelSVM = SVC(kernel = KERNEL, gamma = 'auto', decision_function_shape= 'ovo',class_weight = 'balanced')
     modelSVM.fit(x_train, train_y)
@@ -107,16 +107,18 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
     HOGS_val,  _= get_all_features(val_x, O, PPC, CPB, train_ratio)
     x_val = np.concatenate((np.vstack(HOGS_val), np.vstack(val_angles), np.vstack(val_rot)), axis = 1)
     y_pred = modelSVM.predict(x_val)
-    val_y = [1 if y[0] == 2 else y[0] for y in val_y]
-    sample_weight = []
 
-    for i in val_y:
-        if i == 0:
-            sample_weight.append(1)
-        elif i ==1:
-            sample_weight.append(2)
-        elif i == 2:
-            sample_weight.append(3)
+    if N_CLASSES == 2: val_y = [1 if y == 2 else y for y in val_y]
+
+    elif N_CLASSES == 3:
+        sample_weight = []
+        for i in val_y:
+            if i == 0:
+                sample_weight.append(1)
+            elif i ==1:
+                sample_weight.append(2)
+            elif i == 2:
+                sample_weight.append(3)
 
     precision, recall, f1, _ = precision_recall_fscore_support(val_y, y_pred, average = 'weighted')
 
@@ -153,6 +155,7 @@ def get_train_val(train_indexes, all_x, all_y, all_angles, all_rot):
 #%% ==============================================================================
 #                              MAIN
 # ================================================================================
+"""
 comp_train_set = [] # complete training set (all validation sets)
 for label in ['frontal', 'tilted', 'profile']:
     comp_train_set.append(np.load(open(os.path.join(ANGLES, '%s_pain_train_angles.pickle' % label), 'rb'), allow_pickle = True))
@@ -166,9 +169,10 @@ for label in ['frontal', 'tilted', 'profile']:
 
 test_set = np.vstack(test_set)
 ears_test, orbital_test, eyelid_test, sclera_test, nostrils_test, mouth_test = get_x_y(test_set)
+"""
 #%%
 
-roi_labels = ['Ears', 'Orbital', 'Sclera', 'Nostrils', 'Mouth']
+roi_labels = ['Ears', 'Orbital', 'Eyelid', 'Sclera', 'Nostrils', 'Mouth']
 if MODE == 'cross_val':
     all_precision = []
     all_recall = []
