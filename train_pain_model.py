@@ -72,7 +72,7 @@ data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
 
 pain_scores = pd.read_excel(os.path.join(DATASET, 'pain_annotations.xlsx'), index_col=0, engine='openpyxl')
 
-N_CLASSES = 2 #2 or 3
+N_CLASSES = 3 #2 or 3
 # %%============================================================================
 #                            AUXILIAR FUNCTIONS
 # ==============================================================================
@@ -83,13 +83,13 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
     train_angles = [train_angles[i]for i in range(len(train_y)) if train_y[i] != []]
     train_angles = [[a[0][0], a[0][1], abs(a[0][2])] for a in train_angles]
     train_rot = [train_rot[i] for i in range(len(train_y)) if train_y[i] != []]
-    train_y = np.hstack([train_y[i] for i in range(len(train_y)) if train_y[i] != []])
+    train_y = [train_y[i] for i in range(len(train_y)) if train_y[i] != []]
 
     val_x = [val_x[i] for i in range(len(val_y)) if val_y[i] != []]
     val_angles = [val_angles[i] for i in range(len(val_y)) if val_y[i] != []]
     val_angles = [[a[0][0], a[0][1], abs(a[0][2])] for a in val_angles]
     val_rot = [val_rot[i] for i in range(len(val_y)) if val_y[i] != []]
-    val_y = np.hstack([val_y[i] for i in range(len(val_y)) if val_y[i] != []])
+    val_y = [val_y[i] for i in range(len(val_y)) if val_y[i] != []]
 
 
 
@@ -97,9 +97,21 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
     HOGS_train = np.asarray(HOGS_train)
 
     x_train = np.concatenate((np.vstack(HOGS_train), np.vstack(train_angles), np.vstack(train_rot)), axis = 1)
-    print('train_y: ', len(train_y))
-    train_y = np.hstack(train_y)
-    train_y = [1 if y == 2 else y for y in train_y]
+
+    if N_CLASSES == 2:
+        if type(train_y[0]) == int: #so double features such as eyes, i.e., the horse has two eyes
+                train_y = [1 if y == 2 else y for y in train_y]
+                val_y = [1 if y == 2 else y for y in val_y]
+        else:
+            train_y = [1 if y[0] == 2 else y[0] for y in train_y]
+            val_y = [1 if y[0] == 2 else y[0] for y in val_y]
+    elif N_CLASSES == 3:
+        if type(train_y[0]) == int: #so double features such as eyes, i.e., the horse has two eyes
+            train_y = [y for y in train_y]
+            val_y = [y for y in val_y]
+        else:
+            train_y = [y[0] for y in train_y]
+            val_y = [y[0] for y in val_y]
 
     modelSVM = SVC(kernel = KERNEL, gamma = 'auto', decision_function_shape= 'ovo',class_weight = 'balanced')
     modelSVM.fit(x_train, train_y)
@@ -108,28 +120,16 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
     x_val = np.concatenate((np.vstack(HOGS_val), np.vstack(val_angles), np.vstack(val_rot)), axis = 1)
     y_pred = modelSVM.predict(x_val)
 
-    if N_CLASSES == 2: val_y = [1 if y == 2 else y for y in val_y]
-
-    elif N_CLASSES == 3:
-        sample_weight = []
-        for i in val_y:
-            if i == 0:
-                sample_weight.append(1)
-            elif i ==1:
-                sample_weight.append(2)
-            elif i == 2:
-                sample_weight.append(3)
-
     precision, recall, f1, _ = precision_recall_fscore_support(val_y, y_pred, average = 'weighted')
 
-    target_names = ['0', '1']
-    print(classification_report(val_y, y_pred, target_names=target_names))
+    #target_names = ['0', '1']
+    #print(classification_report(val_y, y_pred, target_names=target_names))
 
     if list(val_y).count(1) > list(val_y).count(0):
         dummy = np.ones(np.shape(np.vstack(y_pred)))
     else:
         dummy = np.zeros(np.shape(np.vstack(y_pred)))
-    #sample_weight = sample_weight
+
     print('Weighted MV F1_score: %0.2f' % f1_score(val_y, dummy, average = 'weighted'))
 
     with open(os.path.join(MODELS, name_model + '.pickle'), 'wb') as f:
