@@ -88,7 +88,7 @@ def rotate_image(label, image, points, angle):
     max_x = max(new_points[:, 0])
     min_y = min(new_points[:, 1])
     max_y = max(new_points[:, 1])
-    bw = max(max_x - min_x, 0.05*h)
+    bw = max_x - min_x
     bh = max(max_y - min_y, 0.05*h)
 
     #print('min x: ', min_x, 'max x: ', max_x, 'min_y: ', min_y, 'max_y: ', max_y)

@@ -54,7 +54,7 @@ BIG_SIDE = 100
 
 EX_FOLDER = os.path.join(os.getcwd(), 'pain_estimation', 'examples')
 
-MODE = 'final_model' # final_model or cross_val
+MODE = 'cross_val' # final_model or cross_val
 if not os.path.exists(MODELS):
     os.mkdir(MODELS)
 
@@ -72,6 +72,7 @@ data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
 
 pain_scores = pd.read_excel(os.path.join(DATASET, 'pain_annotations.xlsx'), index_col=0, engine='openpyxl')
 
+MODE = 'final_model' # final_model or cross_val
 N_CLASSES = 3 #2 or 3
 # %%============================================================================
 #                            AUXILIAR FUNCTIONS
@@ -130,7 +131,7 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
     else:
         dummy = np.zeros(np.shape(np.vstack(y_pred)))
 
-    print('Weighted MV F1_score: %0.2f' % f1_score(val_y, dummy, average = 'weighted'))
+    #print('Weighted MV F1_score: %0.2f' % f1_score(val_y, dummy, average = 'weighted'))
 
     with open(os.path.join(MODELS, name_model + '.pickle'), 'wb') as f:
         # Pickle the 'data' dictionary using the highest protocol available.
@@ -155,7 +156,7 @@ def get_train_val(train_indexes, all_x, all_y, all_angles, all_rot):
 #%% ==============================================================================
 #                              MAIN
 # ================================================================================
-"""
+
 comp_train_set = [] # complete training set (all validation sets)
 for label in ['frontal', 'tilted', 'profile']:
     comp_train_set.append(np.load(open(os.path.join(ANGLES, '%s_pain_train_angles.pickle' % label), 'rb'), allow_pickle = True))
@@ -169,7 +170,7 @@ for label in ['frontal', 'tilted', 'profile']:
 
 test_set = np.vstack(test_set)
 ears_test, orbital_test, eyelid_test, sclera_test, nostrils_test, mouth_test = get_x_y(test_set)
-"""
+
 #%%
 
 roi_labels = ['Ears', 'Orbital', 'Eyelid', 'Sclera', 'Nostrils', 'Mouth']
@@ -179,10 +180,11 @@ if MODE == 'cross_val':
     all_f1 = []
 
     for i,roi in enumerate([ears, orbital, eyelid, sclera, nostrils, mouth]):
+        find_best_f1 = []
         print(roi_labels[i])
         print('===============================')
         for KERNEL in ['linear', 'rbf']:
-            for CPB in [1, 2, 3, 4]:
+            for CPB in [1, 2, 3]:
                 for PPC in [8, 16]:
                     for k in range(N_FOLDS):
                         val_set = []
@@ -200,19 +202,40 @@ if MODE == 'cross_val':
                         all_recall.append(recall)
                         all_f1.append(f1)
 
-                    print('Kernel: ',  KERNEL, 'CPB: ', CPB, 'PPC: ', PPC)
-                    print('Precision: %0.2f (+/-) %0.2f' % (np.mean(all_precision), np.std(all_precision)))
-                    print('Recall: %0.2f (+/-) %0.2f' % (np.mean(all_recall), np.std(all_recall)))
-                    print('F1-score: %0.2f (+/-) %0.2f' % (np.mean(all_f1), np.std(all_f1)))
+                    #print('Kernel: ',  KERNEL, 'CPB: ', CPB, 'PPC: ', PPC)
+                    #print('Precision: %0.2f (+/-) %0.2f' % (np.mean(all_precision), np.std(all_precision)))
+                    #print('Recall: %0.2f (+/-) %0.2f' % (np.mean(all_recall), np.std(all_recall)))
+                    #print('F1-score: %0.2f (+/-) %0.2f' % (np.mean(all_f1), np.std(all_f1)))
+                    find_best_f1.append([KERNEL, CPB, PPC,np.mean(all_f1), np.std(all_f1)])
+        find_best_f1 = np.vstack(find_best_f1)
+        means = find_best_f1[:,3]
+        maximum_f1_index = [ i for i in range(len(means)) if means[i] == max(means)][0]
+        KERNEL, CPB, PPC, mean_f1, std_f1 = find_best_f1[maximum_f1_index, :]
+        print('Kernel: ',  KERNEL, 'CPB: ', CPB, 'PPC: ', PPC)
+        print('F1-score: %s (+/-) %s' % (mean_f1, std_f1))
 
 elif MODE == 'final_model':
     # best option for each classifier [kernel, cpb, pcc]
-    ears_best = ['linear', 3, 8]
-    orbital_best = ['linear', 2, 8]
-    eyelid_best = ['linear', 1, 8]
-    sclera_best = ['linear', 2, 8]
-    nostrils_best = ['linear', 4, 8]
-    mouth_best = ['linear', 1, 8]
+
+    if N_CLASSES == 2:
+        ears_best = ['linear', 1, 8]
+        orbital_best = ['linear', 3, 16]
+        eyelid_best = ['linear', 1, 8]
+        sclera_best = ['linear', 1, 8]
+        nostrils_best = ['linear', 1, 8]
+        mouth_best = ['linear', 1, 8]
+
+
+    elif N_CLASSES == 3:
+        # For 3 classes
+        ears_best = ['linear', 1, 8]
+        orbital_best = ['linear', 3, 16]
+        eyelid_best = ['linear', 1, 8]
+        sclera_best = ['linear', 1, 8]
+        nostrils_best = ['linear', 1, 8]
+        mouth_best = ['linear', 3, 16]
+
+
     all_parameters = [ears_best, orbital_best, eyelid_best, sclera_best, nostrils_best, mouth_best]
     for i,roi in enumerate([[ears, ears_test], [orbital, orbital_test], [eyelid, eyelid_test], [sclera, sclera_test], [nostrils, nostrils_test], [mouth, mouth_test]]):
         print(roi_labels[i])
