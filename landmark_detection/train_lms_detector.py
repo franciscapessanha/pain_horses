@@ -27,7 +27,6 @@ import math
 import pickle
 
 DATASET = os.path.join(os.getcwd(), '..', 'dataset')
-ABS_POSE = os.path.join(DATASET,'abs_pose')
 ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
 
 
@@ -35,6 +34,12 @@ MODE = 'final_model'
 n_pert = 70
 N_FOLDS = 3
 AUG = 'aug_2_pert_10'
+
+LMS_SYSTEM = 'complete' # complete or absolute
+if LMS_SYSTEM == 'absolute':
+    ABS_POSE = os.path.join(DATASET,'abs_pose')
+elif LMS_SYSTEM == 'complete':
+    ABS_POSE = os.path.join(DATASET,'abs_pose_complete')
 #%%============================================================================
 #                             AUXILIAR FUNCTIONS
 #==============================================================================
@@ -52,7 +57,6 @@ def sort_files(l):
 
 def sorted_image_import(folder):
   file_list = sort_files(glob.glob(folder + '/*.png'))
-  print('len file list: ', len(file_list))
   """
   The default behaviour of import_images() imports and attaches the landmark
   files that share the same filename stem as the images. The group name of the
@@ -72,9 +76,8 @@ def sorted_image_import(folder):
 #%%============================================================================
 #                                 MODELS
 #==============================================================================
-def ERT(data, data_aug, path_to_images, n_pert = 30, prefix = '', verbose = True):
+def ERT(data, path_to_images, n_pert = 30, prefix = '', verbose = True):
   train = data[0][:]
-  train_aug = data_aug[0][:]
   name_fitter = prefix + '.pkl'
   print('fitters/' + name_fitter)
 
@@ -89,7 +92,7 @@ def ERT(data, data_aug, path_to_images, n_pert = 30, prefix = '', verbose = True
   else:
     if verbose:
       print('Training fitter', name_fitter)
-    fitter = DlibERT(train, train_aug, scales=(1), verbose=verbose, n_perturbations=n_pert)
+    fitter = DlibERT(train, scales=(1), verbose=verbose, n_perturbations=n_pert)
     if verbose:
       print('Saving fitter', name_fitter)
 
@@ -151,36 +154,37 @@ def fit_mean_shape(data, prefix, path_to_images, verbose = True):
 
 
 def train_model(path_to_images, prefix, n_pert):
-	if MODE == 'cross_val':
-		images, files = sorted_image_import(path_to_images)
-		for k in range(N_FOLDS):
-			fold = np.vstack(pickle.load(open(os.path.join(ANGLES, '%s_pain_val_fold_%d_angles.pickle' % (prefix, k)), 'rb')))
-			indexes_train = [i for i in range(len(files)) if files[i].split('/')[-1].split('.')[0] + '.jpg' not in fold[:,0]]
-			file_list = [files[i] for i in indexes_train]
-			images = LazyList([partial(mio.import_image,f) for f in file_list])
-			landmarks = images.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
-			print(type(images))
-			images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'data_aug_2_%d' % k))
-			landmarks_aug = images_aug.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
-			print(np.shape(images_aug))
+    if MODE == 'cross_val':
+        images, files = sorted_image_import(path_to_images)
+        for k in range(N_FOLDS):
+            fold = np.vstack(pickle.load(open(os.path.join(ANGLES, '%s_pain_val_fold_%d_angles.pickle' % (prefix, k)), 'rb')))
+            indexes_train = [i for i in range(len(files)) if files[i].split('/')[-1].split('.')[0] + '.jpg' not in fold[:,0]]
+            file_list = [files[i] for i in indexes_train]
+            images = LazyList([partial(mio.import_image,f) for f in file_list])
+            landmarks = images.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
+            print(type(images))
+            images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'data_aug_2_%d' % k))
+            landmarks_aug = images_aug.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
+            print(np.shape(images_aug))
 
-			ERT((images, landmarks), (images_aug, landmarks_aug), path_to_images, n_pert= n_pert, prefix = ('%s_ert_fold_' % AUG + str(k) + '_' + prefix + '_pert_%d' %n_pert), verbose = True)
-			#new_SDM((images, landmarks), (images_aug, landmarks_aug), path_to_images, n_pert= n_pert, prefix = ('sdm_' + prefix + '_pert_%d' %n_pert), verbose = True)
-			#fit_mean_shape((images, landmarks), ('mean_' + prefix + '_pert_%d' %n_pert), path_to_images, verbose = True)
+            ERT((images, landmarks), (images_aug, landmarks_aug), path_to_images, n_pert= n_pert, prefix = ('%s_ert_fold_' % AUG + str(k) + '_' + prefix + '_pert_%d' %n_pert), verbose = True)
+            #new_SDM((images, landmarks), (images_aug, landmarks_aug), path_to_images, n_pert= n_pert, prefix = ('sdm_' + prefix + '_pert_%d' %n_pert), verbose = True)
+            #fit_mean_shape((images, landmarks), ('mean_' + prefix + '_pert_%d' %n_pert), path_to_images, verbose = True)
 
 
-			#new_SDM((images, landmarks), path_to_images, n_pert=n_pert, prefix= ('sdm_' + + str(k) + '_' + prefix), verbose = True)
-			#fit_mean_shape((images, landmarks), verbose = True)
-	elif MODE == 'final_model':
-		images, files = sorted_image_import(path_to_images)
-		landmarks = images.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
-		images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'data_aug_1.5'))
-		landmarks_aug = images_aug.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
-		print(np.shape(images_aug))
+            #new_SDM((images, landmarks), path_to_images, n_pert=n_pert, prefix= ('sdm_' + + str(k) + '_' + prefix), verbose = True)
+            #fit_mean_shape((images, landmarks), verbose = True)
+    elif MODE == 'final_model':
+        images, files = sorted_image_import(path_to_images)
+        landmarks = images.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
+        print('len landmarks: ', len(landmarks))
+        #images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'data_'))
+        #landmarks_aug = images_aug.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
+        #print(np.shape(images_aug))
 
-		ERT((images, landmarks), (images_aug, landmarks_aug), path_to_images, n_pert= n_pert, prefix = ('ert_aug_pert_0_new_' + prefix + '_pert_%d' %n_pert), verbose = True)
-		#new_SDM((images, landmarks), path_to_images, n_pert= n_pert, prefix = ('sdm_' + prefix + '_pert_%d' %n_pert), verbose = True)
-		#fit_mean_shape((images, landmarks), ('mean_' + prefix + '_pert_%d' %n_pert), path_to_images, verbose = True)
+        ERT((images, landmarks), path_to_images, n_pert= n_pert, prefix = ('ert_' + prefix + '_pert_%d' %n_pert), verbose = True)
+        new_SDM((images, landmarks), path_to_images, n_pert= n_pert, prefix = ('sdm_' + prefix + '_pert_%d' %n_pert), verbose = True)
+        fit_mean_shape((images, landmarks), ('mean_' + prefix + '_pert_%d' %n_pert), path_to_images, verbose = True)
 
 
 
@@ -189,13 +193,13 @@ def train_model(path_to_images, prefix, n_pert):
 #=============================================================================
 
 def main():
-	if MODE == 'cross_val':
-		train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
-		train_model(os.path.join(ABS_POSE,'tilted',  'train'), 'tilted', 30)
-		train_model(os.path.join(ABS_POSE,'profile',  'train'), 'profile', 30)
+    if MODE == 'cross_val':
+        train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
+        train_model(os.path.join(ABS_POSE,'tilted',  'train'), 'tilted', 30)
+        train_model(os.path.join(ABS_POSE,'profile',  'train'), 'profile', 30)
 
-	elif MODE == 'final_model':
-		#train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
-		#train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 30)
-		train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 30)
+    elif MODE == 'final_model':
+        train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
+        train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 30)
+        train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 30)
 main()

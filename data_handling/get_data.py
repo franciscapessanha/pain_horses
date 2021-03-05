@@ -22,7 +22,7 @@ lms_folder = os.path.join(DATASET, 'landmarks')
 filename = os.path.join(DATASET, 'pose_annotations.xlsx')
 data = pd.read_excel(filename, sheet_name='conc_sheet', engine='openpyxl')
 data_len = [d for d in data.values if not math.isnan(d[0])] #there was a problem with the length of the excel (a lot of rows full of nan values)
-data = data[: len(data_len)] 
+data = data[: len(data_len)]
 
 #%% Change image col to image path
 #-----------------------------------------------------------------------------
@@ -182,4 +182,4 @@ for i, info in enumerate(data.values):
         print(i)
 """
 
-data.to_pickle(os.path.join(DATASET, 'lms_annotations_2.0.pkl'))
+data.to_pickle(os.path.join(DATASET, 'lms_annotations.pkl'))

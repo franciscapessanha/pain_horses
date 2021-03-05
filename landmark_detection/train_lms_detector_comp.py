@@ -592,15 +592,15 @@ def main():
         new_SDM((images_30, landmarks_30), path_to_images, n_pert=n_pert, prefix= ('sdm_' + prefix), verbose = True)
 
 
-        n_pert = 10
+        n_pert = 30
         prefix = '30_60_pert_%d_' % n_pert
         path_to_images = os.path.join(ABS_POSE,'30_60/')
         images_60, files_60 = sorted_image_import(path_to_images)
         landmarks_60 = images_60.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
 
-        #fit_mean_shape((images_60, landmarks_60), 'mean_' + prefix, path_to_images, verbose = True)
+        fit_mean_shape((images_60, landmarks_60), 'mean_' + prefix, path_to_images, verbose = True)
 
-        #ERT((images_60, landmarks_60), path_to_images, n_pert= n_pert, prefix = ('ert_' + prefix), verbose = True)
+        ERT((images_60, landmarks_60), path_to_images, n_pert= n_pert, prefix = ('ert_' + prefix), verbose = True)
         new_SDM((images_60, landmarks_60), path_to_images, n_pert=n_pert, prefix= ('sdm_' + prefix), verbose = True)
 
         n_pert = 30
@@ -609,10 +609,10 @@ def main():
         images_90, files_90 = sorted_image_import(path_to_images)
         landmarks_90 = images_90.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
 
-        #fit_mean_shape((images_90, landmarks_90), 'mean_' + prefix, path_to_images, verbose = True)
+        fit_mean_shape((images_90, landmarks_90), 'mean_' + prefix, path_to_images, verbose = True)
 
-        #ERT((images_90, landmarks_90), path_to_images, n_pert= n_pert, prefix = ('ert_' + prefix), verbose = True)
+        ERT((images_90, landmarks_90), path_to_images, n_pert= n_pert, prefix = ('ert_' + prefix), verbose = True)
         new_SDM((images_90, landmarks_90), path_to_images, n_pert=n_pert, prefix= ('sdm_' + prefix), verbose = True)
 
 
-#main()
+main()
