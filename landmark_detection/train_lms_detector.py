@@ -25,6 +25,8 @@ import cv2 as cv
 from menpo.shape import mean_pointcloud
 import math
 import pickle
+from create_pts_lms import create_pts_files
+
 
 DATASET = os.path.join(os.getcwd(), '..', 'dataset')
 ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
@@ -193,6 +195,7 @@ def train_model(path_to_images, prefix, n_pert):
 #=============================================================================
 
 def main():
+    create_pts_files(LMS_SYSTEM)
     if MODE == 'cross_val':
         train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
         train_model(os.path.join(ABS_POSE,'tilted',  'train'), 'tilted', 30)
@@ -202,4 +205,4 @@ def main():
         train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
         train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 30)
         train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 30)
-#main()
+main()

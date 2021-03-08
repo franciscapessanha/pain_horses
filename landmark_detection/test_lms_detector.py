@@ -168,7 +168,7 @@ def get_lms_error(plm_errors, label):
             print('Mouth mean error: ', np.mean(mouth_error))
             print('Mouth success rate: ',len(np.where(np.hstack(mouth_error) < SR)[0]) / len(np.hstack(mouth_error)))
 
-            return [np.mean(ear_error), np.mean(nose_error), np.mean(eye_error), np.mean(mouth_error), np.mean(cheek_error)]
+            return [np.mean(ear_error), np.mean(nose_error), np.mean(eye_error), np.mean(mouth_error)]
 
 
 #==============================================================================
@@ -275,7 +275,6 @@ def test_eval(fitter, images, files, mean = False, pose ='',  verbose=True, save
         if label == 'frontal':
             eye_center = [(lms_gt[13,1] + lms_gt[10,1])/2, (lms_gt[12,0] + lms_gt[15,0])/2]
             nose_center = [(lms_gt[16,1] + lms_gt[18,1])/2, (lms_gt[20,0] + lms_gt[17,0])/2]
-
 
             distance_1 = list(np.array(eye_center) - np.array(nose_center))
             distance_1 = [abs(i) for i in distance_1]
