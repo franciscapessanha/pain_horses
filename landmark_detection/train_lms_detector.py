@@ -202,4 +202,4 @@ def main():
         train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
         train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 30)
         train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 30)
-main()
+#main()
