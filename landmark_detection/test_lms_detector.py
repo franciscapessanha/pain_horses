@@ -41,7 +41,7 @@ AUG = 'aug_2'
 #MODE = 'final_model'
 
 
-LMS_SYSTEM = 'complete' # complete or absolute
+LMS_SYSTEM = 'absolute' # complete or absolute
 if LMS_SYSTEM == 'absolute':
     ABS_POSE = os.path.join(DATASET,'abs_pose')
 elif LMS_SYSTEM == 'complete':
