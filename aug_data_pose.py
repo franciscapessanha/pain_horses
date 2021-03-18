@@ -18,7 +18,7 @@ import pandas as pd
 DATASET = os.path.join(os.getcwd(), 'dataset')
 ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
 N_FOLDS = 3
-alpha = 0.7
+alpha = 0.5
 
 COLORS =  os.path.join(DATASET, '3D_annotations', 'colors')
 SHAPES =  os.path.join(DATASET, '3D_annotations', 'shapes')
@@ -33,7 +33,7 @@ if not os.path.exists(POSE):
 	os.mkdir(POSE)
 
 for k in range(N_FOLDS):
-	sub_path = os.path.join(POSE,'aug_data_alpha_0.7_final_%d' % k)
+	sub_path = os.path.join(POSE,'aug_data_alpha_%.1f_final_%d' % (alpha, k))
 	if not os.path.exists(sub_path):
 		os.mkdir(sub_path)
 
@@ -117,7 +117,8 @@ def save_dataframe(all_info, name):
 		df_.to_csv (name + '.csv', index = False, header=True)
 
 #%%
-for k in range(0,N_FOLDS):
+#for k in range(0,N_FOLDS):
+for k in [2]:
 	all_train = []
 	all_val = []
 
@@ -271,9 +272,9 @@ for k in range(0,N_FOLDS):
 			extension = '_sim_indexes.pickle'
 
 		int_lms = np.vstack([lms[i] for i in pickle.load(open(os.path.join(MODELS, pose + extension), 'rb'))])
-		img_path = os.path.join(POSE,'aug_data_alpha_0.7_final_%d' % k , str(i) + '.png')
+		img_path = os.path.join(POSE,'aug_data_alpha_%.1f_final_%d' % (alpha, k) , str(i) + '.png')
 		cv.imwrite(img_path, new_img)
 
 		all_info_train.append([img_path, int_lms, R_x, R_z, R_y])
 
-	save_dataframe(all_info_train, 'train_alpha_0.7_final_k_%d' % k)
+	save_dataframe(all_info_train, 'train_alpha_%.1f_final_k_%d' % (alpha, k))

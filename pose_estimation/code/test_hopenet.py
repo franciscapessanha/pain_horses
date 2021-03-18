@@ -69,7 +69,10 @@ def PCC(t, p):
 
 
 def MAE(t, p):
-    return round(np.mean(np.abs(t - p)), 4)
+    my_list = np.abs(t - p)
+    print('my list ', np.abs(t-p))
+    mean = torch.mean(torch.stack(my_list))
+    return round(mean, 4)
 
 
 def evaluate(gt, val):
@@ -203,7 +206,7 @@ if __name__ == '__main__':
                 error_string = 'y %.2f, p %.2f, r %.2f' % (torch.sum(torch.abs(yaw_predicted - label_yaw)), torch.sum(torch.abs(pitch_predicted - label_pitch)), torch.sum(torch.abs(roll_predicted - label_roll)))
                 cv2.putText(cv2_img, error_string, (30, cv2_img.shape[0]- 30), fontFace=1, fontScale=1, color=(0,0,255), thickness=2)
             # utils.plot_pose_cube(cv2_img, yaw_predicted[0], pitch_predicted[0], roll_predicted[0], size=100)
-            utils.draw_axis(cv2_img, yaw_predicted[0], pitch_predicted[0], roll_predicted[0], tdx = 200, tdy= 200, size=100)
+            utils.draw_axis(cv2_img, yaew_predicted[0], pitch_predicted[0], roll_predicted[0], tdx = 200, tdy= 200, size=100)
             cv2.imwrite(os.path.join('output/images', name + '.jpg'), cv2_img)
 
     print('Test error in degrees of the model on the ' + str(total) +

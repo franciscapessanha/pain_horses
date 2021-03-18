@@ -350,15 +350,16 @@ def test_eval(fitter, images, files, mean = False, pose ='',  verbose=True, save
 
     all_errors.append([file, errors_image])
 
-  with open(os.path.join(RESULTS,'%s_%s_results_%s.pickle' % (fold,AUG, label)), 'wb') as f:
+  with open(os.path.join(RESULTS,'results_%d_%s.pickle' % (fold,label)), 'wb') as f:
   #with open(os.path.join(RESULTS,'full_%s_results_%s.pickle' % (AUG, label)), 'wb') as f:
     # Pickle the 'data' dictionary using the highest protocol available.
+    print('print len all errors: ', len(all_errors))
     pickle.dump(all_errors, f)
 
   plm_errors = np.vstack(plm_errors)
   per_roi_errors = get_lms_error(plm_errors, label)
 
-  with open(os.path.join(RESULTS,'%s_%s_results_per_roi_%s.pickle' % (fold,AUG, label)), 'wb') as f:
+  with open(os.path.join(RESULTS,'results_per_roi_%d_%s.pickle' % (fold,label)), 'wb') as f:
         #with open(os.path.join(RESULTS,'full_%s_results_per_roi_%s.pickle' % (AUG, label)), 'wb') as f:
     # Pickle the 'data' dictionary using the highest protocol available.
     pickle.dump(per_roi_errors, f)
@@ -371,14 +372,16 @@ def test_eval(fitter, images, files, mean = False, pose ='',  verbose=True, save
 def get_test_results(path_to_images, fitter_path, save_images_folder, cross_val = False, fold = 0, mean = False):
     images, files = sorted_image_import(path_to_images)
     if cross_val == True:
-        fold = np.vstack(pickle.load(open(os.path.join(ANGLES, '%s_pain_val_fold_%d_angles.pickle' % (save_images_folder.split('/')[-1], k)), 'rb')))
-        indexes_val = [i for i in range(len(files)) if files[i].split('/')[-1].split('.')[0] + '.jpg' in fold[:,0]]
+        val = np.vstack(pickle.load(open(os.path.join(ANGLES, '%s_pain_val_fold_%d_angles.pickle' % (save_images_folder.split('/')[-1], fold)), 'rb')))
+        print('len val: ', len(val))
+        indexes_val = [i for i in range(len(files)) if files[i].split('/')[-1].split('.')[0] + '.jpg' in val[:,0]]
         file_list = [files[i] for i in indexes_val]
+        print(len(file_list))
         images = LazyList([partial(mio.import_image,f) for f in file_list])
         landmarks = images.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
-
+        print('length fold: ', len(images))
         fitter = mio.import_pickle(fitter_path)
-        errors = test_eval(fitter, images, files, mean = mean,  folder = save_images_folder, save_images = True, fold = k)
+        errors = test_eval(fitter, images, files, mean = mean,  folder = save_images_folder, save_images = True, fold = fold)
 
     else:
         path_to_images = os.path.join(ABS_POSE,label,'test/')
@@ -389,21 +392,39 @@ def get_test_results(path_to_images, fitter_path, save_images_folder, cross_val 
 #%%============================================================================
 #                                   MAIN
 #==============================================================================
+"""
+cross_val = True
+if not cross_val:
 
-for label in ['frontal', 'tilted',  'profile']:
-    print(label, '\n====================')
+    for label in ['frontal', 'tilted',  'profile']:
+        print(label, '\n====================')
 
-    for p in ['ert', 'sdm']: #'ert_' + prefix + '_pert_%d' %n_pert)
+        for p in ['ert', 'sdm']: #'ert_' + prefix + '_pert_%d' %n_pert)
+            print(p, '\n----------------------------')
+            prefix = '%s_' % p + label + '_pert_30.pkl'
+            get_test_results(os.path.join(ABS_POSE,label, 'train'),
+                                         os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
+                                         os.path.join(os.getcwd(), label), cross_val = False, fold = 0, mean = False)
+
+        p = 'mean'
         print(p, '\n----------------------------')
         prefix = '%s_' % p + label + '_pert_30.pkl'
         get_test_results(os.path.join(ABS_POSE,label, 'train'),
-                                     os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
-                                     os.path.join(os.getcwd(), label), cross_val = False, fold = 0, mean = False)
+                         os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
+                         os.path.join(os.getcwd(), label), cross_val = False, fold = 0, mean = True)
+
+else:
+    for label in ['frontal', 'tilted',  'profile']:
+        print(label, '\n====================')
+        for fold in range(N_FOLDS):
+            for p in ['ert']: #'ert_' + prefix + '_pert_%d' %n_pert)
+                print(p, '\n----------------------------')
+                prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_30.pkl'
+                get_test_results(os.path.join(ABS_POSE,label, 'train'),
+                                             os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
+                                             os.path.join(os.getcwd(), label), cross_val = cross_val, fold = fold, mean = False)
 
 
-    p = 'mean'
-    print(p, '\n----------------------------')
-    prefix = '%s_' % p + label + '_pert_30.pkl'
-    get_test_results(os.path.join(ABS_POSE,label, 'train'),
-                     os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
-                     os.path.join(os.getcwd(), label), cross_val = False, fold = 0, mean = True)
+"""
+
+

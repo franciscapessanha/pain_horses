@@ -32,12 +32,12 @@ DATASET = os.path.join(os.getcwd(), '..', 'dataset')
 ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
 
 
-MODE = 'final_model'
+MODE = 'cross_val'
 n_pert = 70
 N_FOLDS = 3
-AUG = 'aug_2_pert_10'
+AUG = ''
 
-LMS_SYSTEM = 'complete' # complete or absolute
+LMS_SYSTEM = 'absolute' # complete or absolute
 if LMS_SYSTEM == 'absolute':
     ABS_POSE = os.path.join(DATASET,'abs_pose')
 elif LMS_SYSTEM == 'complete':
@@ -164,12 +164,7 @@ def train_model(path_to_images, prefix, n_pert):
             file_list = [files[i] for i in indexes_train]
             images = LazyList([partial(mio.import_image,f) for f in file_list])
             landmarks = images.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
-            print(type(images))
-            images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'data_aug_2_%d' % k))
-            landmarks_aug = images_aug.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
-            print(np.shape(images_aug))
-
-            ERT((images, landmarks), (images_aug, landmarks_aug), path_to_images, n_pert= n_pert, prefix = ('%s_ert_fold_' % AUG + str(k) + '_' + prefix + '_pert_%d' %n_pert), verbose = True)
+            ERT((images, landmarks), path_to_images, n_pert= n_pert, prefix = ('ert_fold_' + str(k) +  '_pert_%d' %n_pert), verbose = True)
             #new_SDM((images, landmarks), (images_aug, landmarks_aug), path_to_images, n_pert= n_pert, prefix = ('sdm_' + prefix + '_pert_%d' %n_pert), verbose = True)
             #fit_mean_shape((images, landmarks), ('mean_' + prefix + '_pert_%d' %n_pert), path_to_images, verbose = True)
 
@@ -195,7 +190,7 @@ def train_model(path_to_images, prefix, n_pert):
 #=============================================================================
 
 def main():
-    create_pts_files(LMS_SYSTEM)
+    #create_pts_files(LMS_SYSTEM)
     if MODE == 'cross_val':
         train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
         train_model(os.path.join(ABS_POSE,'tilted',  'train'), 'tilted', 30)
@@ -205,4 +200,4 @@ def main():
         train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 30)
         train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 30)
         train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 30)
-#main()
+main()

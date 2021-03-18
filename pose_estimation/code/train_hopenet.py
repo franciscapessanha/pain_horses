@@ -95,14 +95,12 @@ def do_epoch(epoch, model, loader, idx_tensor, optimizer, criterion, reg_criteri
         model.train()
     with torch.set_grad_enabled(not val):
         for i, (images, labels, cont_labels, name) in enumerate(loader):
-            #images = Variable(images).cuda(gpu)
-            images = Variable(images)
+            images = Variable(images).cuda(gpu)
 
             # Binned labels
             label_yaw = Variable(labels[:, 0]).cuda(gpu)
             label_pitch = Variable(labels[:, 1]).cuda(gpu)
             label_roll = Variable(labels[:, 2]).cuda(gpu)
-
 
             # Continuous labels
             label_yaw_cont = Variable(cont_labels[:, 0]).cuda(gpu)
@@ -111,6 +109,7 @@ def do_epoch(epoch, model, loader, idx_tensor, optimizer, criterion, reg_criteri
 
             # Forward pass
             yaw, pitch, roll = model(images)
+
             # Cross entropy loss
             loss_yaw = criterion(yaw, label_yaw)
             loss_pitch = criterion(pitch, label_pitch)
@@ -140,9 +139,7 @@ def do_epoch(epoch, model, loader, idx_tensor, optimizer, criterion, reg_criteri
                 val_loss_roll += loss_roll.item()
             elif optimizer is not None:
                 loss_seq = [loss_yaw, loss_pitch, loss_roll]
-                #grad_seq = [torch.ones(1).cuda(gpu) for _ in range(len(loss_seq))]
-
-                grad_seq = [torch.tensor(1.0) for _ in range(len(loss_seq))]
+                grad_seq = [torch.tensor(1.0).cuda(gpu) for _ in range(len(loss_seq))]
                 optimizer.zero_grad()
                 torch.autograd.backward(loss_seq, grad_seq)
                 optimizer.step()
@@ -176,7 +173,7 @@ def main():
     if args.snapshot == '':
         load_filtered_state_dict(model, model_zoo.load_url('https://download.pytorch.org/models/resnet50-19c8e357.pth'))
     else:
-        saved_state_dict = torch.load(args.snapshot, map_location='cpu')
+        saved_state_dict = torch.load(args.snapshot)
         model.load_state_dict(saved_state_dict)
 
     print('Loading data.')
@@ -239,7 +236,6 @@ def main():
     model.cuda(gpu)
     criterion = nn.CrossEntropyLoss().cuda(gpu)
     reg_criterion = nn.MSELoss().cuda(gpu)
-
     # Regression loss coefficient
     alpha = args.alpha
 
@@ -262,7 +258,8 @@ def main():
                             softmax, alpha, len(valid_dataset) // batch_size, num_epochs, gpu, val=True)
         if last_val_loss < 0 or val_loss < last_val_loss:
             last_val_loss = val_loss
-            torch.save(model.state_dict(), 'output/snapshots/' + args.output_string + '%d_best.pkl' % epoch)
+            torch.save(model.state_dict(), 'output/snapshots/' + args.output_string + '_best.pkl')
+
 
         if epoch % 1 == 0 and epoch < num_epochs:
             print('Taking snapshot...')
