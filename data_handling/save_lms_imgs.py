@@ -77,28 +77,28 @@ for animal in data.values:
     if abs(pose) == 0: #frontal
         pose = 'frontal'
         relative_indexes = [0, 2, 4, 5, 7, 9, *range(10,35), *range(43,46)]
-        outline_lms = [lms[i] for i in range(len(lms)) if i in relative_indexes]
-        abs_lms = [lms[i] for i in range(len(lms)) if i not in relative_indexes]
+        outline_lms = [lms[i] for i in range(len(lms)) if i not in relative_indexes]
+        abs_lms = [lms[i] for i in range(len(lms)) if i in relative_indexes]
 
     elif abs(pose) == 30: #tilted
         pose = 'tilted'
         relative_indexes = [0, 2, 4, 5, 7, 9,  *range(10,33)]
-        outline_lms = [lms[i] for i in range(len(lms)) if i in relative_indexes]
-        abs_lms = [lms[i] for i in range(len(lms)) if i not in relative_indexes]
+        outline_lms = [lms[i] for i in range(len(lms)) if i not in relative_indexes]
+        abs_lms = [lms[i] for i in range(len(lms)) if i in relative_indexes]
 
     elif abs(pose) == 60: #profile
         pose = 'profile'
         relative_indexes = [0, 2, 5, *range(6,10),*range(12,38)]
-        outline_lms = [lms[i] for i in range(len(lms)) if i in relative_indexes]
-        abs_lms = [lms[i] for i in range(len(lms)) if i not in relative_indexes]
+        outline_lms = [lms[i] for i in range(len(lms)) if i not in relative_indexes]
+        abs_lms = [lms[i] for i in range(len(lms)) if i in relative_indexes]
 
     for (x,y) in outline_lms:
         r = 4
-        cv.circle(img, (int(x), int(y)), r, (0,255,0), thickness=-1, lineType=cv.LINE_AA)
+        #cv.circle(img, (int(x), int(y)), r, (0,0,255), thickness=-1, lineType=cv.LINE_AA)
 
     for (x,y) in abs_lms:
         r = 4
-        cv.circle(img, (int(x), int(y)), r, (0,0,255), thickness=-1, lineType=cv.LINE_AA)
+        cv.circle(img, (int(x), int(y)), r, (0,255,0), thickness=-1, lineType=cv.LINE_AA)
 
     cv.imwrite(os.path.join(IMAGES_WITH_LMS, species, pose, img_name), img)
 
