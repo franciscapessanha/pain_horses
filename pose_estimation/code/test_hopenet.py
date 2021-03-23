@@ -63,25 +63,26 @@ def SAGR(t, p):
 
 
 def PCC(t, p):
-    cc = pearsonr(t, p)[0]
-    cc = np.nan_to_num(cc)
+    print('type t: ', type(t))
+    print('type p: ', type(p))
+    cc = pearsonr(np.hstack(t), np.hstack(p))[0]
+    #cc = np.nan_to_num(cc)
     return abs(round(cc, 4))
 
 
 def MAE(t, p):
-    my_list = np.abs(t - p)
-    print('my list ', np.abs(t-p))
-    mean = torch.mean(torch.stack(my_list))
-    return round(mean, 4)
+    return round(np.mean(np.abs(t - p)), 4)
 
 
 def evaluate(gt, val):
     print('     Yaw        Pitch      Roll       Ave')
+
     print('MAE ',
           str(MAE(gt[:, 0], val[:, 0])).ljust(10),
           str(MAE(gt[:, 1], val[:, 1])).ljust(10),
           str(MAE(gt[:, 2], val[:, 2])).ljust(10),
           str(MAE(gt.ravel(), val.ravel())).ljust(10))
+
     print('PCC ',
           str(PCC(gt[:, 0], val[:, 0])).ljust(10),
           str(PCC(gt[:, 1], val[:, 1])).ljust(10),
@@ -169,7 +170,7 @@ if __name__ == '__main__':
         label_pitch = cont_labels[:,1].float()
         label_roll = cont_labels[:,2].float()
 
-        gt.append([label_yaw, label_pitch, label_roll])
+        gt.append([label_yaw.item(), label_pitch.item(), label_roll.item()])
 
         yaw, pitch, roll = model(images)
 
@@ -184,12 +185,11 @@ if __name__ == '__main__':
         roll_predicted = utils.softmax_temperature(roll.data, 1)
 
 
-        yaw_predicted = torch.sum(yaw_predicted * idx_tensor, 1).cpu() * 3 - 99
-        pitch_predicted = torch.sum(pitch_predicted * idx_tensor, 1).cpu() * 3 - 99
-        roll_predicted = torch.sum(roll_predicted * idx_tensor, 1).cpu() * 3 - 99
+        yaw_predicted = (torch.sum(yaw_predicted * idx_tensor, 1).cpu() * 3 - 99)
+        pitch_predicted = (torch.sum(pitch_predicted * idx_tensor, 1).cpu() * 3 - 99)
+        roll_predicted = (torch.sum(roll_predicted * idx_tensor, 1).cpu() * 3 - 99)
 
-        pred.append([yaw_predicted, pitch_predicted, roll_predicted])
-
+        pred.append([yaw_predicted.item(), pitch_predicted.item(), roll_predicted.item()])
         # Mean absolute error
         yaw_error += torch.sum(torch.abs(yaw_predicted - label_yaw))
         pitch_error += torch.sum(torch.abs(pitch_predicted - label_pitch))

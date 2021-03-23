@@ -69,10 +69,6 @@ def PCC(t, p):
 
 
 def MAE(t, p):
-    print('type t: ', type(t))
-    print('type p: ', type(p))
-    print('np.abs(t - p) = ', np.abs(t - p))
-    print('mean np.abs(t - p) = ', np.mean(np.abs(t - p)).numpy())
     return round(np.mean(np.abs(t - p)).numpy(), 4)
 
 

@@ -16,16 +16,11 @@ import glob
 from sklearn.model_selection import train_test_split
 import shutil
 
-BIG_SIDE = 600
 
-DATASET = os.path.join(os.getcwd(),'..','dataset')
-ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
+BIG_SIDE = 600
 
 #LMS_SYSTEM = 'complete' # complete or absolute
 
-
-
-data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
 
 # ==============================================================================
 
@@ -87,7 +82,7 @@ def resize_img(img, lms, ratio):
 
 # ==============================================================================
 def create_pts(lms, pts_path):
-    with open(pts_path, 'w') as pts_file:
+     with open(pts_path, 'w') as pts_file:
         pts_file.write('version: 1\n')
         pts_file.write('n_points:  ' + str(len(lms)) + '\n')
         pts_file.write('{\n')
@@ -144,6 +139,11 @@ def save_abs_imgs(train_path, test_path, abs_folder, indexes, LMS_SYSTEM):
         create_pts(abs_lms, os.path.join(abs_folder, 'test', img_name + '.pts'))
 
 def create_pts_files(LMS_SYSTEM):
+
+    DATASET = os.path.join(os.getcwd(),'..','dataset')
+    ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
+
+    data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
     for label , indexes in [['frontal',[0, 2, 4, 5, 7, 9, *range(10,35), *range(43,46)]], ['tilted', [0, 2, 4, 5, 7, 9,  *range(10,33)]], ['profile', [0, 2, 5, *range(6,10),*range(12,38)]]]:
         train = glob.glob(os.path.join(DATASET, 'cross_val', label, 'train', '*.jpg'))
         test = glob.glob(os.path.join(DATASET, 'cross_val', label, 'test', '*.jpg'))

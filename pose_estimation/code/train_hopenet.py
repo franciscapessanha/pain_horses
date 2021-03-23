@@ -250,7 +250,9 @@ def main():
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=num_epochs // 2, gamma=0.1)
     last_val_loss = -1
     print('Ready to train network.')
+    k = 0
     for epoch in range(num_epochs):
+
         scheduler.step()
         do_epoch(epoch, model, train_loader, idx_tensor, optimizer, criterion, reg_criterion,
                  softmax, alpha, len(train_dataset) // batch_size, num_epochs, gpu)
@@ -258,11 +260,12 @@ def main():
                             softmax, alpha, len(valid_dataset) // batch_size, num_epochs, gpu, val=True)
         if last_val_loss < 0 or val_loss < last_val_loss:
             last_val_loss = val_loss
-            torch.save(model.state_dict(), 'output/snapshots/' + args.output_string + '_best.pkl')
+            torch.save(model.state_dict(), 'output/snapshots/' + args.output_string + '_epoch_'+ str(epoch+1) + '_best.pkl')
+            k = 0
+        elif k >= 10:
+            break
+        else:
+            k += 1
 
-
-        if epoch % 1 == 0 and epoch < num_epochs:
-            print('Taking snapshot...')
-            torch.save(model.state_dict(),'output/snapshots/' + args.output_string + '_epoch_'+ str(epoch+1) + '.pkl')
 if __name__ == '__main__':
     main()

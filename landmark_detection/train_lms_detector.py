@@ -41,6 +41,7 @@ if LMS_SYSTEM == 'absolute':
     ABS_POSE = os.path.join(DATASET,'abs_pose')
 elif LMS_SYSTEM == 'complete':
     ABS_POSE = os.path.join(DATASET,'abs_pose_complete')
+
 #%%============================================================================
 #                             AUXILIAR FUNCTIONS
 #==============================================================================
@@ -163,6 +164,10 @@ def train_model(path_to_images, prefix, n_pert):
             file_list = [files[i] for i in indexes_train]
             images = LazyList([partial(mio.import_image,f) for f in file_list])
             landmarks = images.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
+
+            if data_aug = True:
+                images, files = sorted_image_import(os.path.join(ABS_POSE, prefix,
+
             ERT((images, landmarks), path_to_images, n_pert= n_pert, prefix = ('ert_fold_' + str(k) +  '_pert_%d' %n_pert), verbose = True)
             #fit_mean_shape((images, landmarks), ('mean_' + prefix + '_pert_%d' %n_pert), path_to_images, verbose = True)
             #new_SDM((images, landmarks), path_to_images, n_pert= n_pert, prefix = ('sdm_' + prefix + '_pert_%d' %n_pert), verbose = True)
@@ -184,6 +189,8 @@ def train_model(path_to_images, prefix, n_pert):
 #%%============================================================================
 #                       RUN
 #=============================================================================
+
+data_aug = True
 
 def main():
     #create_pts_files(LMS_SYSTEM)
