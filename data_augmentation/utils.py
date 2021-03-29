@@ -304,7 +304,7 @@ def crop_image(img, img_path, lms, pose):
 	lms_resize = np.vstack(lms_resize)
 
 
-	cv.imwrite(os.path.join(EX_FOLDER, img_path.split('/')[-1].split('.')[0] + '_%s.jpg' % 'gt_resized'), img_resize)
+	#cv.imwrite(os.path.join(EX_FOLDER, img_path.split('/')[-1].split('.')[0] + '_%s.jpg' % 'gt_resized'), img_resize)
 
 
 	return img_resize, lms_resize

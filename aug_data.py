@@ -33,7 +33,9 @@ ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
 MODELS =  os.path.join(DATASET, '3D_annotations', 'models')
 
 
-EX_FOLDER = os.path.join(os.getcwd(), 'examples')
+EX_FOLDER = os.path.join(os.getcwd(), 'examples_data_aug')
+if not os.path.exists(EX_FOLDER):
+    os.mkdir(EX_FOLDER)
 
 ABS_POSE = os.path.join(os.getcwd(), 'dataset','abs_pose')
 N_FOLDS = 3
@@ -98,9 +100,11 @@ shapes = glob.glob(os.path.join(SHAPES, '*.obj'))
 colors_list = glob.glob(os.path.join(COLORS, '*.pickle'))
 
 #for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
+
 for AUG in [0.5, 0.7]:
-    for pose,ratio in [['frontal', 600/270], ['tilted', 600/333],['profile', 600/381]]:
-        for k in range(1, N_FOLDS):
+    for k in range(1, N_FOLDS):
+        for pose,ratio in [['frontal', 600/270], ['tilted', 600/333],['profile', 600/381]]:
+
             #yaw_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'yaw', k)), 'rb'), allow_pickle = True)
             #pitch_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'pitch', k)), 'rb'), allow_pickle = True)
             #roll_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'roll', k)), 'rb'), allow_pickle = True)
@@ -115,8 +119,8 @@ for AUG in [0.5, 0.7]:
 
 
             print('len yaw list: ', len(yaw_list))
-            #for i in range(0,len(yaw_list)):
             for i in range(len(yaw_list)):
+                print('%d / %d' % (i+1, len(yaw_list)))
                 colors =  pickle.load(open(random.choice(colors_list), 'rb'))
                 shape = random.choice(shapes)
                 vertices, triangles = load_obj(shape)
@@ -139,11 +143,8 @@ for AUG in [0.5, 0.7]:
                 """
                 path_bg = random.choice(list(BACKGROUND))
                 img_background = cv.imread(path_bg)
-                #vertices = rotate_points(vertices)
-
 
                 # [euler_angles_degrees[2], euler_angles_degrees[0], euler_angles_degrees[1]]  # roll, pitch, yaw
-
                 R_y = yaw_list[i]
                 R_x = random.sample(roll_list,1)[0]
                 R_z = random.sample(pitch_list,1)[0]
@@ -170,14 +171,13 @@ for AUG in [0.5, 0.7]:
 
 
                 scene = mesh.scene()
-                scene.camera. K = np.load(shape.replace('obj', 'pickle'), 'rb', allow_pickle = True)
-                scene.camera.resolution = tuple([800, 800])
+                scene.camera.K = np.load(shape.replace('obj', 'pickle'), 'rb', allow_pickle = True)
+                scene.camera.resolution = tuple([1600, 1600])
                 scene.camera_transform = scene.camera.look_at(vertices_rot)
 
                 name = 'yaw_%d_pitch_%d_roll_%d.png' % (R_y,R_z, R_x)
 
-                #background = path_bg.replace('png', 'bmp')
-                png = scene.save_image(resolution = scene.camera.resolution, visible = True)
+                png = scene.save_image(resolution = scene.camera.resolution, background = [0,0,0], visible = True)
                 with open(os.path.join(TEMP, name) , 'wb') as f:
                     f.write(png)
                     f.close()
@@ -194,6 +194,10 @@ for AUG in [0.5, 0.7]:
 
                 lms, _ = project_pts(vertices_rot, scene.camera.K, external_parameters = np.dot(np.linalg.inv(RT_4x4),np.linalg.inv(scene.camera_transform))[:3,:])
 
+
+                img, lms = crop_image(img_load,lms, R_y)
+
+
                 silhouete = np.vstack(silhouete)
                 silhouete_lms = []
                 for pt in silhouete:
@@ -204,36 +208,7 @@ for AUG in [0.5, 0.7]:
                     index = np.argmin(dists, axis=0)
                     silhouete_lms.append(lms[index])
 
-                background_h, background_w = np.shape(img_background)[:2]
-                head_h, head_w = np.shape(img_load)[:2]
-
-                ratio_head = head_h/head_w
-                ratio_background = background_h/background_w
-
-                if background_h > background_w:
-                    new_background_h = head_h
-                    new_background_w = max(background_w * head_h / background_h, head_w)
-
-                if  background_h < background_w:
-                    new_background_w = head_w
-                    new_background_h = max(background_h * head_w / background_w, head_h)
-
-
-
-                resize_background = cv.resize(img_background, (int(new_background_w), int(new_background_h)))
-                resize_background = cv.GaussianBlur(resize_background,(5,5),0)
-
-                new_img = img_load.copy()
-                for i_h in range(head_h - 1):
-                    for i_w in range(head_w - 1):
-                        px = img_load[i_h, i_w, :]
-                        if (px == np.asarray([0,0,0])).all(): # 0,0,200 and not [200,200,0] because cv2 works with BGR and not RGB
-                            #print('enter')
-                            new_img[i_h, i_w, :] = resize_background[i_h, i_w, :]
-
-                img, lms = crop_image(new_img, lms, R_y)
-
-                int_lms = np.vstack([lms[i] for i in pickle.load(open(os.path.join(MODELS, pose + '_sim_indexes.pickle'), 'rb'))])
+                int_lms = np.vstack([lms[j] for j in pickle.load(open(os.path.join(MODELS, pose + '_sim_indexes.pickle'), 'rb'))])
                 update_lms = int_lms.copy()
                 if pose == 'frontal':
                     indexes = [0, 2, 3, 5, 30, 31, 32, 33]
@@ -248,23 +223,47 @@ for AUG in [0.5, 0.7]:
                     for ind in indexes:
                         update_lms[ind] = find_closest_point(silhouete_lms, [int_lms[ind]])
 
-                """
-                for pt in int_lms:
-                    cv.circle(new_img,tuple((int(pt[0]), int(pt[1]))), 3, (0,0,255), -1)
-
-
-                for i, pt in enumerate(silhouete_lms):
-                        cv.circle(new_img,tuple((int(pt[0]), int(pt[1]))), 3, (0,255,0), -1)
-
-
-                for pt in update_lms:
-                    cv.circle(new_img,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
-
-                cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(i) + '.png'), new_img)
-                """
                 int_lms = update_lms
-                #img, lms = crop_image(new_img, int_lms, R_y)
                 img_resize, lms_resize = resize_img(img, int_lms, ratio)
-                cv.imwrite(os.path.join(ABS_POSE, pose, 'data_%.1f' % AUG, str(i) + '.png'), img_resize)
+
+                """
+                for pt in lms:
+                    cv.circle(img,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
+
+                cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '_image_load.png'), img)
+                """
+
+                background_h, background_w = np.shape(img_background)[:2]
+                head_h, head_w = np.shape(img_resize)[:2]
+
+                ratio_head = head_h/head_w
+                ratio_background = background_h/background_w
+
+                if background_h > background_w:
+                    new_background_h = head_h
+                    new_background_w = max(background_w * head_h / background_h, head_w)
+
+                if  background_h < background_w:
+                    new_background_w = head_w
+                    new_background_h = max(background_h * head_w / background_w, head_h)
+
+                resize_background = cv.resize(img_background, (int(new_background_w), int(new_background_h)))
+                resize_background = cv.GaussianBlur(resize_background,(5,5),0)
+
+                new_img = img_resize.copy()
+                for i_h in range(head_h - 1):
+                    for i_w in range(head_w - 1):
+                        px = img_load[i_h, i_w, :]
+                        if (px == np.asarray([0,0,0])).all(): # if pixel black
+                            #print('enter')
+                            new_img[i_h, i_w, :] = resize_background[i_h, i_w, :]
+
+                """
+                for pt in lms_resize:
+                    cv.circle(img_resize,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
+
+                cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '.png'), new_img)
+                """
+                cv.imwrite(os.path.join(ABS_POSE, pose, 'data_%.1f' % AUG, str(i) + '.png'), new_img)
                 create_pts(lms_resize, os.path.join(ABS_POSE, pose, 'data_%.1f' % AUG, str(i) + '.pts'))
 
