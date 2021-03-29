@@ -253,17 +253,17 @@ for AUG in [0.5, 0.7]:
                 new_img = img_resize.copy()
                 for i_h in range(head_h - 1):
                     for i_w in range(head_w - 1):
-                        px = img_load[i_h, i_w, :]
+                        px = img_resize[i_h, i_w, :]
                         if (px == np.asarray([0,0,0])).all(): # if pixel black
                             #print('enter')
                             new_img[i_h, i_w, :] = resize_background[i_h, i_w, :]
 
                 """
                 for pt in lms_resize:
-                    cv.circle(img_resize,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
-
-                cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '.png'), new_img)
+                    cv.circle(new_img,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
                 """
+                cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '.png'), new_img)
+
                 cv.imwrite(os.path.join(ABS_POSE, pose, 'data_%.1f' % AUG, str(i) + '.png'), new_img)
                 create_pts(lms_resize, os.path.join(ABS_POSE, pose, 'data_%.1f' % AUG, str(i) + '.pts'))
 
