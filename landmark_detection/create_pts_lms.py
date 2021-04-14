@@ -19,9 +19,12 @@ import shutil
 
 BIG_SIDE = 600
 
-#LMS_SYSTEM = 'complete' # complete or absolute
+#LMS_SYSTEM = 'absolute' # complete or absolute
 
 
+DATASET = os.path.join(os.getcwd(),'..','dataset')
+ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
+data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
 # ==============================================================================
 
 def crop_image(img, lms, pose):
@@ -140,10 +143,6 @@ def save_abs_imgs(train_path, test_path, abs_folder, indexes, LMS_SYSTEM):
 
 def create_pts_files(LMS_SYSTEM):
 
-    DATASET = os.path.join(os.getcwd(),'..','dataset')
-    ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
-
-    data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
     for label , indexes in [['frontal',[0, 2, 4, 5, 7, 9, *range(10,35), *range(43,46)]], ['tilted', [0, 2, 4, 5, 7, 9,  *range(10,33)]], ['profile', [0, 2, 5, *range(6,10),*range(12,38)]]]:
         train = glob.glob(os.path.join(DATASET, 'cross_val', label, 'train', '*.jpg'))
         test = glob.glob(os.path.join(DATASET, 'cross_val', label, 'test', '*.jpg'))

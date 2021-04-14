@@ -262,7 +262,7 @@ def main():
             last_val_loss = val_loss
             torch.save(model.state_dict(), 'output/snapshots/' + args.output_string + '_epoch_'+ str(epoch+1) + '_best.pkl')
             k = 0
-        elif k >= 10:
+        elif k >= 20:
             break
         else:
             k += 1

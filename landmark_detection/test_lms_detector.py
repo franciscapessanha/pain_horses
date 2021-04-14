@@ -407,7 +407,7 @@ def get_test_results(path_to_images, fitter_path, save_images_folder, cross_val 
 #==============================================================================
 
 cross_val = True
-
+AUG = 0.7
 if not cross_val:
 
     for label in ['frontal', 'tilted',  'profile']:
@@ -437,7 +437,7 @@ else:
             for p in ['ert']: #'ert_' + prefix + '_pert_%d' %n_pert)
                 print(p, '\n----------------------------')
                 for fold in range(N_FOLDS):
-                    prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_%d.pkl' % pert
+                    prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_%d_aug_%.1f.pkl' % (pert,AUG)
                     get_test_results(os.path.join(ABS_POSE,label, 'train'),
                                                  os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
                                                  os.path.join(os.getcwd(), label), cross_val = cross_val, fold = fold, mean = False)
