@@ -194,7 +194,7 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
 
                     scene = mesh.scene()
                     scene.camera.K = np.load(shape.replace('obj', 'pickle'), 'rb', allow_pickle = True)
-                    scene.camera.resolution = tuple([1600, 1600])
+                    scene.camera.resolution = tuple([1600,  800])
                     scene.camera_transform = scene.camera.look_at(vertices_rot)
 
                     name = 'yaw_%d_pitch_%d_roll_%d.png' % (R_y,R_z, R_x)
