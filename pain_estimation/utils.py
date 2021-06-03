@@ -116,10 +116,12 @@ def get_x_y(set_):
     for j, angles in enumerate(set_):
         #print(angles)
         #print(j + 1, '/', len(set_))
-        index = int(angles[0].split('.')[0])
+        index = int(angles[0].split('/')[-1].split('.')[0])
         info = data.values[index - 1]
         #print(os.path.join(os.getcwd(), info[0]))
-        img = cv.imread(os.path.join(os.getcwd(), info[0]))
+        img = cv.imread(angles[0])
+        #print('info 0: ', angles[0])
+        #print('shape image: ', np.shape(img))
         lms = info[-1]
         pose = info[2]
 

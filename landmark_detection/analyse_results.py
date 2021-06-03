@@ -53,7 +53,8 @@ def get_error_per_pose(angles, results,title, angle, index, train):
     plt.title(title)
     plt.savefig(os.path.join(PLOTS, title))
 
-    return bin_means, bin_edges, counts,  np.median([np.mean(i[1]) for i in results], axis = 0)
+    #return bin_means, bin_edges, counts,  np.median([np.mean(i[1]) for i in results], axis = 0)
+    return bin_means, bin_edges, counts,  np.mean([np.mean(i[1]) for i in results], axis = 0)
 
 def get_final_error_per_pose(angles, mean_bin,title, angle, index, train):
 
@@ -73,7 +74,7 @@ def get_final_error_per_pose(angles, mean_bin,title, angle, index, train):
     return bin_means, bin_edges, counts,  np.median([np.mean(i[1]) for i in results], axis = 0)
 
 
-def get_results_folds(label, N_FOLDS = 3):
+def get_results_folds(label, pert,  N_FOLDS = 3):
     angles_train = np.vstack(np.load(open(os.path.join(ANGLES, '%s_pain_train_angles.pickle' % label), 'rb'), allow_pickle = True))
 
     print(label)
@@ -83,21 +84,20 @@ def get_results_folds(label, N_FOLDS = 3):
         all_edges = []
         all_mean_angles = []
         print(angle)
+        for k in range(N_FOLDS):
+            results = np.load(open(os.path.join(RESULTS, 'results_%s_%d_pert_%d_%s.pickle' % (LMS_SYSTEM, k, pert, label)), 'rb'), allow_pickle = True)
+            angles = np.vstack(np.load(open(os.path.join(ANGLES, '%s_pain_val_fold_%d_angles.pickle' % (label, k)), 'rb'), allow_pickle = True))
+            train = np.vstack([a for a in angles_train if a not in angles])
+            print('len results: ', len(results))
+            print('len train: ', len(train))
+            bin_means, bin_edges, counts, mean_angle = get_error_per_pose(angles, results, ' %s - fold %d' % (label, k), angle, index, train)
+            all_means.append(bin_means)
+            all_edges.append(bin_edges)
+            all_mean_angles.append(mean_angle)
+
         if mode == 'cross_val':
-            for k in range(N_FOLDS):
-                results = np.load(open(os.path.join(RESULTS, 'results_%s_%d_pert_80_%s.pickle' % (LMS_SYSTEM, k, label)), 'rb'), allow_pickle = True)
-                angles = np.vstack(np.load(open(os.path.join(ANGLES, '%s_pain_val_fold_%d_angles.pickle' % (label, k)), 'rb'), allow_pickle = True))
-                train = np.vstack([a for a in angles_train if a not in angles])
-                print('len results: ', len(results))
-                print('len train: ', len(train))
-                bin_means, bin_edges, counts, mean_angle = get_error_per_pose(angles, results, ' %s - fold %d' % (label, k), angle, index, train)
-                all_means.append(bin_means)
-                all_edges.append(bin_edges)
-                all_mean_angles.append(mean_angle)
                 random_values = []
                 number_values = 0
-
-
                 for i, mean in enumerate(bin_means):
                     if not np.isnan(mean) and mean != 0:
                         #print('min error: ', min_error)
@@ -113,11 +113,10 @@ def get_results_folds(label, N_FOLDS = 3):
                                 random_values.append(random.uniform(bin_edges[i], bin_edges[i + 1]))
                 print(number_values)
 
-                with open(os.path.join(os.getcwd(), 'data_aug', '%s_%s_%s_fold_%d.pickle' % (label, AUG, angle, k)), 'wb') as f:
+                with open(os.path.join(os.getcwd(), 'data_aug', 'mean_%s_%s_%s_fold_%d.pickle' % (label, AUG, angle, k)), 'wb') as f:
                 #with open(os.path.join(os.getcwd(),'%s_%s_fold_%d.pickle' % (label, angle, k)), 'wb') as f:
                       # Pickle the 'data' dictionary using the highest protocol available.
                           pickle.dump(random_values, f)
-
         else:
             # still need fixing
             all_means = np.vstack(all_means)
@@ -135,7 +134,8 @@ def get_results_folds(label, N_FOLDS = 3):
                 if not np.isnan(mean) and mean != 0:
                     #print('min error: ', min_error)
                     #print('mean: ', mean)
-                    aug_factor = (mean/median_mean)** alpha
+                    #aug_factor = (mean/median_mean)** alpha
+                    aug_factor = (mean/mean_angle)** alpha
                     #print('aug_factor: ', aug_factor)
                     #print('counts: ', counts[i])
                     if aug_factor > 1:
@@ -144,7 +144,7 @@ def get_results_folds(label, N_FOLDS = 3):
                         print('n new values: ', n_new_values)
                         for j in range(n_new_values):
                             random_values.append(random.uniform(bin_edges[i], bin_edges[i + 1]))
-            with open(os.path.join(os.getcwd(),'%s_%s_%s_final.pickle' % (label, AUG, angle)), 'wb') as f:
+            with open(os.path.join(os.getcwd(),'mean_%s_%s_%s_final.pickle' % (label, AUG, angle)), 'wb') as f:
                 #with open(os.path.join(os.getcwd(),'%s_%s_fold_%d.pickle' % (label, angle, k)), 'wb') as f:
                 # Pickle the 'data' dictionary using the highest protocol available.
                 print('len: ', len(random_values))
@@ -152,11 +152,11 @@ def get_results_folds(label, N_FOLDS = 3):
 
     return all_means, all_edges
 
-def get_results_per_ROI(label, N_FOLDS = 3):
+def get_results_per_ROI(label, pert, N_FOLDS = 3):
     all_errors = []
     mean_error = []
     for k in range(N_FOLDS):
-        results = np.load(open(os.path.join(RESULTS, 'results_per_roi_%s_%d_pert_80_%s.pickle' % (LMS_SYSTEM, k, label)), 'rb'), allow_pickle = True)
+        results = np.load(open(os.path.join(RESULTS, 'results_per_roi_%s_%d_pert_%d_%s.pickle' % (LMS_SYSTEM, k, pert, label)), 'rb'), allow_pickle = True)
         #results = np.load(open(os.path.join(RESULTS, '%d_%s_results_%s.pickle' % (k, AUG, label)), 'rb'), allow_pickle = True)
         results = np.asarray([i[1] for i in results]).astype(np.float)
         mean_error.append(np.mean(results))
@@ -183,12 +183,12 @@ def get_results_per_ROI(label, N_FOLDS = 3):
 #%%
 
 LMS_SYSTEM = 'absolute'
-mode = 'cross_val'
-for alpha in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2]:
+mode = 'final_model'
+for alpha in [1.0]:
     AUG = 'aug_%.1f' % alpha
-    frontal_means, frontal_edges =  get_results_folds('frontal')
-    tilted_means, tilted_edges =  get_results_folds('tilted')
-    profile_means, profile_edges =  get_results_folds('profile')
+    frontal_means, frontal_edges =  get_results_folds('frontal', 90)
+    tilted_means, tilted_edges =  get_results_folds('tilted', 100)
+    profile_means, profile_edges =  get_results_folds('profile', 100)
 
 
 #frontal_errors =  get_results_per_ROI('frontal')

@@ -22,9 +22,9 @@ BIG_SIDE = 600
 #LMS_SYSTEM = 'absolute' # complete or absolute
 
 
-DATASET = os.path.join(os.getcwd(),'..','dataset')
+DATASET = os.path.join(os.getcwd(),  'dataset')
 ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
-data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
+data = pickle.load(open(os.path.join(DATASET,  'lms_annotations.pkl'), "rb"))
 # ==============================================================================
 
 def crop_image(img, lms, pose):
@@ -166,3 +166,5 @@ def create_pts_files(LMS_SYSTEM):
 
         abs_folder = os.path.join(ABS_POSE, label)
         save_abs_imgs(train, test, abs_folder, indexes, LMS_SYSTEM)
+
+

@@ -28,8 +28,7 @@ from sklearn.metrics import confusion_matrix
 from skimage import exposure
 import random
 import cv2
-
-
+from skimage.feature import local_binary_pattern
 
 BIG_SIDE = 128
 
@@ -295,8 +294,12 @@ def get_cheeks(img, lms, pose):
 """
 
 # ==============================================================================
+def hist(ax, lbp):
+    n_bins = int(lbp.max() + 1)
+    return ax.hist(lbp.ravel(), density=True, bins=n_bins, range=(0, n_bins),
+                   facecolor='0.5')
 
-def get_all_features(list_imgs, O, PPC, CPB, mean_ratio = 0):
+def get_all_features(list_imgs, O, PPC, CPB, METHOD, mean_ratio = 0):
     if mean_ratio == 0:
         if len(list_imgs[0]) != 1:
             ratios_0 = [np.shape(img[0])[0]/np.shape(img[0])[1] for img in list_imgs if img[0] != []]
@@ -307,9 +310,13 @@ def get_all_features(list_imgs, O, PPC, CPB, mean_ratio = 0):
             mean_ratio = np.mean(ratios)
 
     all_HOG = []
+    all_lbp = []
+    radius = 3
+    n_points = 8 * radius
     for img in list_imgs:
         if len(list_imgs[0]) != 1:
             HOGs = []
+            lbps = []
             left = img[0]
             right = img[1]
 
@@ -322,9 +329,15 @@ def get_all_features(list_imgs, O, PPC, CPB, mean_ratio = 0):
                 new_img = resize_img(i,ratio)
 
                 fd =  hog(new_img,  orientations= O, pixels_per_cell=(PPC,PPC), cells_per_block=(CPB, CPB), multichannel=True)
+                gray = cv.cvtColor(new_img.astype('uint8'), cv.COLOR_BGR2GRAY)
+                lbp = local_binary_pattern(gray, n_points, radius, METHOD)
+
                 HOGs.append(fd)
+                lbps.append(np.ravel(lbp))
+
 
             all_HOG.append(np.hstack(HOGs))
+            all_lbp.append(np.hstack(lbps))
         else:
             if img == []:
                 img = np.zeros((200,200, 3))
@@ -332,10 +345,12 @@ def get_all_features(list_imgs, O, PPC, CPB, mean_ratio = 0):
             img = np.squeeze(img)
             new_img = resize_img(img,mean_ratio)
             fd =  hog(new_img,  orientations= O, pixels_per_cell=(PPC,PPC), cells_per_block=(CPB, CPB), multichannel=True)
+            gray = cv.cvtColor(new_img.astype('uint8'), cv.COLOR_BGR2GRAY)
+            lbp = local_binary_pattern(gray, n_points, radius, 'default')
             all_HOG.append(fd)
-
+            all_lbp.append(np.ravel(lbp))
 
 
     #return the features, a 4096 vector
     #return all_HOG, mean_ratio, features_CNN
-    return all_HOG, mean_ratio
+    return all_HOG, all_lbp, mean_ratio

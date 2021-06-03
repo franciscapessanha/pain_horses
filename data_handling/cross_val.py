@@ -282,9 +282,9 @@ def get_train_test(angles, tag):
         length_x = len(x)
         class_cross_val[0] = np.concatenate((class_cross_val[0], x[:round((len(x)*0.7) /3)]))
         x = x[round((len(x)*0.7)/ 3):]
-        class_cross_val[1] = np.concatenate((class_cross_val[0], x[:round((len(x)*0.7) /3)]))
+        class_cross_val[1] = np.concatenate((class_cross_val[1], x[:round((len(x)*0.7) /3)]))
         x = x[round((len(x)*0.7) /3):]
-        class_cross_val[2] = np.concatenate((class_cross_val[0], x[:round((len(x)*0.7) /3)]))
+        class_cross_val[2] = np.concatenate((class_cross_val[2], x[:round((len(x)*0.7) /3)]))
         x = x[round((len(x)*0.7)/3):]
         class_cross_val[-1] = np.concatenate((class_cross_val[-1], x))
         print('last adition - to test: ', len(x))
@@ -336,11 +336,9 @@ tilted_train_X,tilted_test_X = get_train_test(tilted_angles, 'tilted')
 profile_train_X,profile_test_X = get_train_test(profile_angles, 'profile')
 
 
-#make_copy(frontal_train_X, 'frontal/train')
-#make_copy(frontal_test_X, 'frontal/test')
-
-#make_copy(tilted_train_X, 'tilted/train')
-#make_copy(tilted_test_X, 'tilted/test')
-
-#make_copy(profile_train_X, 'profile/train')
-#make_copy(profile_test_X, 'profile/test')
+make_copy(frontal_train_X, 'frontal/train')
+make_copy(frontal_test_X, 'frontal/test')
+make_copy(tilted_train_X, 'tilted/train')
+make_copy(tilted_test_X, 'tilted/test')
+make_copy(profile_train_X, 'profile/train')
+make_copy(profile_test_X, 'profile/test')

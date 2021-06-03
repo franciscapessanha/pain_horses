@@ -54,7 +54,7 @@ BIG_SIDE = 100
 
 EX_FOLDER = os.path.join(os.getcwd(), 'pain_estimation', 'examples')
 
-MODE = 'cross_val' # final_model or cross_val
+MODE = 'final_model' # final_model or cross_val
 if not os.path.exists(MODELS):
     os.mkdir(MODELS)
 
@@ -72,13 +72,13 @@ data = pickle.load(open(os.path.join(DATASET, 'lms_annotations.pkl'), "rb"))
 
 pain_scores = pd.read_excel(os.path.join(DATASET, 'pain_annotations.xlsx'), index_col=0, engine='openpyxl')
 
-MODE = 'final_model' # final_model or cross_val
 N_CLASSES = 3 #2 or 3
+
 # %%============================================================================
 #                            AUXILIAR FUNCTIONS
 # ==============================================================================
 
-def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_angles, val_rot, name_model,PPC, CPB, KERNEL,  O=9):
+def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_angles, val_rot, name_model,PPC, CPB, KERNEL,  METHOD, O=9):
 
     train_x = [train_x[i] for i in range(len(train_y)) if train_y[i] != []]
     train_angles = [train_angles[i]for i in range(len(train_y)) if train_y[i] != []]
@@ -94,11 +94,14 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
 
 
 
-    HOGS_train, train_ratio = get_all_features(train_x, O, PPC, CPB)
+    HOGS_train, LBP_train, train_ratio = get_all_features(train_x, O, PPC, CPB, METHOD)
+    #print('LBP: ', np.shape(LBP_train))
+    #print('HOG: ', np.shape(HOGS_train))
     HOGS_train = np.asarray(HOGS_train)
+    LBP_train = np.asarray(LBP_train)
 
-    x_train = np.concatenate((np.vstack(HOGS_train), np.vstack(train_angles), np.vstack(train_rot)), axis = 1)
-
+    #x_train = np.concatenate((np.vstack(HOGS_train), np.vstack(train_angles), np.vstack(train_rot)), axis = 1)
+    x_train = np.concatenate((np.vstack(LBP_train), np.vstack(train_angles), np.vstack(train_rot)), axis = 1)
     if N_CLASSES == 2:
         if type(train_y[0]) == int: #so double features such as eyes, i.e., the horse has two eyes
                 train_y = [1 if y == 2 else y for y in train_y]
@@ -117,8 +120,9 @@ def train_model(train_x, train_y, train_angles, train_rot, val_x, val_y, val_ang
     modelSVM = SVC(kernel = KERNEL, gamma = 'auto', decision_function_shape= 'ovo',class_weight = 'balanced')
     modelSVM.fit(x_train, train_y)
 
-    HOGS_val,  _= get_all_features(val_x, O, PPC, CPB, train_ratio)
-    x_val = np.concatenate((np.vstack(HOGS_val), np.vstack(val_angles), np.vstack(val_rot)), axis = 1)
+    HOGS_val,LBP_val,  _= get_all_features(val_x, O, PPC, CPB, METHOD, train_ratio)
+    #x_val = np.concatenate((np.vstack(HOGS_val), np.vstack(val_angles), np.vstack(val_rot)), axis = 1)
+    x_val = np.concatenate((np.vstack(LBP_val),  np.vstack(val_angles), np.vstack(val_rot)), axis = 1)
     y_pred = modelSVM.predict(x_val)
 
     precision, recall, f1, _ = precision_recall_fscore_support(val_y, y_pred, average = 'weighted')
@@ -162,6 +166,8 @@ for label in ['frontal', 'tilted', 'profile']:
     comp_train_set.append(np.load(open(os.path.join(ANGLES, '%s_pain_train_angles.pickle' % label), 'rb'), allow_pickle = True))
 
 comp_train_set = np.vstack(comp_train_set)
+comp_train_set = np.vstack([np.concatenate(([os.path.join(DATASET, 'images', i[0])], i[1:])) for i in comp_train_set])
+
 ears, orbital, eyelid, sclera, nostrils, mouth = get_x_y(comp_train_set)
 
 test_set = []
@@ -169,10 +175,13 @@ for label in ['frontal', 'tilted', 'profile']:
     test_set.append(np.load(open(os.path.join(ANGLES, '%s_pain_test_angles.pickle' % label), 'rb'), allow_pickle = True))
 
 test_set = np.vstack(test_set)
+test_set = np.vstack([np.concatenate(([os.path.join(DATASET, 'images', i[0])], i[1:])) for i in test_set])
+
+test_set = np.vstack(test_set)
 ears_test, orbital_test, eyelid_test, sclera_test, nostrils_test, mouth_test = get_x_y(test_set)
 
 #%%
-
+O = 9
 roi_labels = ['Ears', 'Orbital', 'Eyelid', 'Sclera', 'Nostrils', 'Mouth']
 if MODE == 'cross_val':
     all_precision = []
@@ -183,9 +192,14 @@ if MODE == 'cross_val':
         find_best_f1 = []
         print(roi_labels[i])
         print('===============================')
-        for KERNEL in ['linear', 'rbf']:
-            for CPB in [1, 2, 3]:
-                for PPC in [8, 16]:
+        # FOR HOG FEATURES
+        #for KERNEL in ['linear', 'rbf']:
+         #   for CPB in [1, 2, 3]:
+         #       for PPC in [8, 16]:
+        KERNEL = 'linear'
+        CPB =1
+        PPC = 8
+        for METHOD in ['default', 'ror', 'uniform']:
                     for k in range(N_FOLDS):
                         val_set = []
                         for label in ['frontal', 'tilted', 'profile']:
@@ -196,44 +210,47 @@ if MODE == 'cross_val':
                         #:::::::::::::::::::::::::::::::::::::::::::
                         train, val = get_train_val(train_indexes, *roi)
 
-                        precision, recall, f1 = train_model(*train, *val, '%s_bin_fold_%d_o_%d_ppc_%d_cpb_%d_kernel_%s' % (roi_labels[i], k, O, PPC, CPB, KERNEL), PPC, CPB, KERNEL)
-
+                        #precision, recall, f1 = train_model(*train, *val, '%s_bin_fold_%d_o_%d_ppc_%d_cpb_%d_kernel_%s' % (roi_labels[i], k, O, PPC, CPB, KERNEL), PPC, CPB, KERNEL)
+                        precision, recall, f1 = train_model(*train, *val, '%s_bin_fold_%d_lbp' % (roi_labels[i], k), PPC, CPB, KERNEL, METHOD)
                         all_precision.append(precision)
                         all_recall.append(recall)
                         all_f1.append(f1)
 
-                    #print('Kernel: ',  KERNEL, 'CPB: ', CPB, 'PPC: ', PPC)
-                    #print('Precision: %0.2f (+/-) %0.2f' % (np.mean(all_precision), np.std(all_precision)))
-                    #print('Recall: %0.2f (+/-) %0.2f' % (np.mean(all_recall), np.std(all_recall)))
-                    #print('F1-score: %0.2f (+/-) %0.2f' % (np.mean(all_f1), np.std(all_f1)))
-                    find_best_f1.append([KERNEL, CPB, PPC,np.mean(all_f1), np.std(all_f1)])
+
+                    #For HOGS: find_best_f1.append([KERNEL, CPB, PPC,np.mean(all_f1), np.std(all_f1)])
+                    find_best_f1.append([METHOD,np.mean(all_f1), np.std(all_f1)])
         find_best_f1 = np.vstack(find_best_f1)
-        means = find_best_f1[:,3]
+        #means = find_best_f1[:,3]
+        means = find_best_f1[:,1]
         maximum_f1_index = [ i for i in range(len(means)) if means[i] == max(means)][0]
-        KERNEL, CPB, PPC, mean_f1, std_f1 = find_best_f1[maximum_f1_index, :]
-        print('Kernel: ',  KERNEL, 'CPB: ', CPB, 'PPC: ', PPC)
+        mean_f1 = np.mean([float(i) for i in find_best_f1[:,1]])
+        std_f1 = np.mean([float(i) for i in find_best_f1[:,2]])
+        METHOD = find_best_f1[maximum_f1_index, :]
+        #print('Kernel: ',  KERNEL, 'CPB: ', CPB, 'PPC: ', PPC)
+        #print('F1-score: %s (+/-) %s' % (mean_f1, std_f1))
+        print('Method: ', METHOD)
         print('F1-score: %s (+/-) %s' % (mean_f1, std_f1))
 
 elif MODE == 'final_model':
     # best option for each classifier [kernel, cpb, pcc]
 
     if N_CLASSES == 2:
-        ears_best = ['linear', 1, 8]
-        orbital_best = ['linear', 3, 16]
-        eyelid_best = ['linear', 1, 8]
-        sclera_best = ['linear', 1, 8]
-        nostrils_best = ['linear', 1, 8]
-        mouth_best = ['linear', 1, 8]
+        ears_best = ['linear', 1, 8, 'default']
+        orbital_best = ['linear', 3, 16, 'uniform']
+        eyelid_best = ['linear', 1, 8, 'default']
+        sclera_best = ['linear', 1, 8, 'default']
+        nostrils_best = ['linear', 1, 8, 'default']
+        mouth_best = ['linear', 1, 8, 'uniform']
 
 
     elif N_CLASSES == 3:
         # For 3 classes
-        ears_best = ['linear', 1, 8]
-        orbital_best = ['linear', 3, 16]
-        eyelid_best = ['linear', 1, 8]
-        sclera_best = ['linear', 1, 8]
-        nostrils_best = ['linear', 1, 8]
-        mouth_best = ['linear', 3, 16]
+        ears_best = ['linear', 1, 8, 'ror']
+        orbital_best = ['linear', 3, 16, 'default']
+        eyelid_best = ['linear', 1, 8, 'uniform']
+        sclera_best = ['linear', 1, 8, 'default']
+        nostrils_best = ['linear', 1, 8, 'default']
+        mouth_best = ['linear', 3, 16, 'uniform']
 
 
     all_parameters = [ears_best, orbital_best, eyelid_best, sclera_best, nostrils_best, mouth_best]
@@ -242,9 +259,9 @@ elif MODE == 'final_model':
         print('===============================')
         train = roi[0]
         test = roi[1]
-        KERNEL, CPB, PPC = all_parameters[i]
-        precision, recall, f1 = train_model(*train, *test, 'final_%s_bin_final_ppc_%d_cpb_%d_kernel_%s' % (roi_labels[i], PPC, CPB, KERNEL), PPC, CPB, KERNEL)
-
+        KERNEL, CPB, PPC, METHOD = all_parameters[i]
+        #precision, recall, f1 = train_model(*train, *test, 'final_%s_bin_final_ppc_%d_cpb_%d_kernel_%s' % (roi_labels[i], PPC, CPB, KERNEL), PPC, CPB, KERNEL)
+        precision, recall, f1 = train_model(*train, *test, 'final_%s_bin_lbp_final' % (roi_labels[i]), PPC, CPB, KERNEL, METHOD)
 
         print('Kernel: ',  KERNEL, 'CPB: ', CPB, 'PPC: ', PPC)
         print('Precision: %0.2f ' % precision)

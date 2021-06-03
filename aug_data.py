@@ -51,6 +51,12 @@ for folder in ['frontal', 'tilted','profile']:
 
     for k in range(N_FOLDS):
         for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
+            sub_path = os.path.join(path,'mean_data_%.1f_%d' % (AUG, k))
+            if not os.path.exists(sub_path):
+                os.mkdir(sub_path)
+
+    for k in range(N_FOLDS):
+        for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
             sub_path = os.path.join(path,'data_%.1f_%d' % (AUG, k))
             if not os.path.exists(sub_path):
                 os.mkdir(sub_path)
@@ -90,7 +96,7 @@ def find_closest_point(silhouete, points):
     new_points = np.vstack(new_points)
     return new_points
 
-
+formula = 'median'
 #%%
 BACKGROUND = glob.glob(os.path.join(DATASET, 'flickr_backgrounds', '*.png'))
 
@@ -102,24 +108,40 @@ colors_list = glob.glob(os.path.join(COLORS, '*.pickle'))
 for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
     print('AUG = %.1f'% AUG)
     for pose,ratio in [['frontal', 600/270], ['tilted', 600/333],['profile', 600/381]]:
-        for k in range(N_FOLDS):
-            #yaw_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'yaw', k)), 'rb'), allow_pickle = True)
-            #pitch_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'pitch', k)), 'rb'), allow_pickle = True)
-            #roll_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'roll', k)), 'rb'), allow_pickle = True)
-            if MODE == 'cross_val':
-                yaw_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', 'data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'yaw', k)), 'rb'), allow_pickle = True)
-                pitch_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection','data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'pitch', k)), 'rb'), allow_pickle = True)
-                roll_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', 'data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'roll', k)), 'rb'), allow_pickle = True)
-            if len(glob.glob(os.path.join(ABS_POSE, pose, 'data_%.1f_%d' % (AUG, k),  '*.png'))) == len(yaw_list):
-                break
-            else:
-                random.shuffle(yaw_list)
-                random.shuffle(pitch_list)
-                random.shuffle(roll_list)
+        #yaw_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'yaw', k)), 'rb'), allow_pickle = True)
+        #pitch_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'pitch', k)), 'rb'), allow_pickle = True)
+        #roll_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'roll', k)), 'rb'), allow_pickle = True)
+        if MODE == 'cross_val':
+            for k in range(N_FOLDS):
+                if formula == 'median':
+                    yaw_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', 'data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'yaw', k)), 'rb'), allow_pickle = True)
+                    pitch_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection','data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'pitch', k)), 'rb'), allow_pickle = True)
+                    roll_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', 'data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'roll', k)), 'rb'), allow_pickle = True)
+                    if len(glob.glob(os.path.join(ABS_POSE, pose, 'data_%.1f_%d' % (AUG, k),  '*.png'))) == len(yaw_list):
+                        break
+                    else:
+                        random.shuffle(yaw_list)
+                        random.shuffle(pitch_list)
+                        random.shuffle(roll_list)
+
+                if formula == 'mean':
+                    yaw_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', 'data_aug', 'mean_%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'yaw', k)), 'rb'), allow_pickle = True)
+                    pitch_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection','data_aug', 'mean_%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'pitch', k)), 'rb'), allow_pickle = True)
+                    roll_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', 'data_aug', 'mean_%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'roll', k)), 'rb'), allow_pickle = True)
+                if len(glob.glob(os.path.join(ABS_POSE, pose, 'mean_data_%.1f_%d' % (AUG, k),  '*.png'))) == len(yaw_list):
+                    break
+                else:
+                    random.shuffle(yaw_list)
+                    random.shuffle(pitch_list)
+                    random.shuffle(roll_list)
 
 
                 print('len yaw list: ', len(yaw_list))
-                for i in range(len(glob.glob(os.path.join(ABS_POSE, pose, 'data_%.1f_%d' % (AUG, k),  '*.png'))),len(yaw_list)):
+                if formula == 'mean':
+                    folder = os.path.join(ABS_POSE, pose, 'mean_data_%.1f_%d' % (AUG, k))
+                elif formula == 'median':
+                    folder = os.path.join(ABS_POSE, pose, 'data_%.1f_%d' % (AUG, k))
+                for i in range(len(glob.glob(os.path.join(folder,  '*.png'))),len(yaw_list)):
                     print('%d / %d' % (i+1, len(yaw_list)))
                     colors =  pickle.load(open(random.choice(colors_list), 'rb'))
                     shape = random.choice(shapes)
@@ -195,9 +217,6 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
                     lms, _ = project_pts(vertices_rot, scene.camera.K, external_parameters = np.dot(np.linalg.inv(RT_4x4),np.linalg.inv(scene.camera_transform))[:3,:])
 
 
-                    img, lms = crop_image(img_load,lms, R_y)
-
-
                     silhouete = np.vstack(silhouete)
                     silhouete_lms = []
                     for pt in silhouete:
@@ -208,30 +227,29 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
                         index = np.argmin(dists, axis=0)
                         silhouete_lms.append(lms[index])
 
+
                     int_lms = np.vstack([lms[j] for j in pickle.load(open(os.path.join(MODELS, pose + '_sim_indexes.pickle'), 'rb'))])
+
+                    #for pt in int_lms:
+                    #    cv.circle(img_load,tuple((int(pt[0]), int(pt[1]))), 5, (255,0,0), -1)
+
+                    #for pt in silhouete:
+                    #    cv.circle(img_load,tuple((int(pt[0]), int(pt[1]))), 5, (200,200,200), -1)
+
+                    #for i, pt in enumerate(int_lms):
+                    #    if i in [*range(0,6), 18, 19, *range(22, 26)]:
+                    #        cv.circle(img_load,tuple((int(pt[0]), int(pt[1]))), 5, (255,255,0), -1)
+
+                    #cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '_image_before_silhotte.png'), img_load)
+
                     update_lms = int_lms.copy()
-                    if pose == 'frontal':
-                        indexes = [0, 2, 3, 5, 30, 31, 32, 33]
-                        for ind in indexes:
-                            update_lms[ind] = find_closest_point(silhouete_lms, [int_lms[ind]])
-                    elif pose == 'tilted':
-                        indexes = [*range(0,6), 18, 19, *range(22, 26)]
-                        for ind in indexes:
-                            update_lms[ind] = find_closest_point(silhouete_lms, [int_lms[ind]])
-                    elif pose == 'profile':
-                        indexes = [0, 1, 2, *range(26, 33)]
-                        for ind in indexes:
-                            update_lms[ind] = find_closest_point(silhouete_lms, [int_lms[ind]])
+
 
                     int_lms = update_lms
+
+                    img, int_lms = crop_image(img_load,int_lms, R_y)
+
                     img_resize, lms_resize = resize_img(img, int_lms, ratio)
-
-                    """
-                    for pt in lms:
-                        cv.circle(img,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
-
-                    cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '_image_load.png'), img)
-                    """
 
                     background_h, background_w = np.shape(img_background)[:2]
                     head_h, head_w = np.shape(img_resize)[:2]
@@ -258,12 +276,13 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
                                 #print('enter')
                                 new_img[i_h, i_w, :] = resize_background[i_h, i_w, :]
 
-                    """
-                    for pt in lms_resize:
-                        cv.circle(new_img,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
-                    """
-                    cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '.png'), new_img)
+                    img_with_pts   = new_img.copy()
 
-                    cv.imwrite(os.path.join(ABS_POSE, pose, 'data_%.1f_%d' % (AUG, k), str(i) + '.png'), new_img)
-                    create_pts(lms_resize, os.path.join(ABS_POSE, pose, 'data_%.1f_%d' % (AUG, k), str(i) + '.pts'))
+                    for pt in lms_resize:
+                        cv.circle(img_with_pts,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
+
+                    cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '.png'), img_with_pts)
+
+                    cv.imwrite(os.path.join(folder, str(i) + '.png'), new_img)
+                    create_pts(lms_resize, os.path.join(folder, str(i) + '.pts'))
 

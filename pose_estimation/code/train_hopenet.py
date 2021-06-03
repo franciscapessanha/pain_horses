@@ -260,12 +260,13 @@ def main():
                             softmax, alpha, len(valid_dataset) // batch_size, num_epochs, gpu, val=True)
         if last_val_loss < 0 or val_loss < last_val_loss:
             last_val_loss = val_loss
-            torch.save(model.state_dict(), 'output/snapshots/' + args.output_string + '_epoch_'+ str(epoch+1) + '_best.pkl')
+            torch.save(model.state_dict(), 'output/snapshots/' + args.output_string + '_epoch_'+ str(epoch+1) + '_best_out_of_100.pkl')
             k = 0
+        """
         elif k >= 20:
             break
         else:
             k += 1
-
+        """
 if __name__ == '__main__':
     main()

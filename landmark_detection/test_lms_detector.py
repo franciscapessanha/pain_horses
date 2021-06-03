@@ -405,42 +405,51 @@ def get_test_results(path_to_images, fitter_path, save_images_folder, cross_val 
 #%%============================================================================
 #                                   MAIN
 #==============================================================================
-
+"""
 cross_val = True
-AUG = 0.7
-if not cross_val:
-
-    for label in ['frontal', 'tilted',  'profile']:
-        print('label')
-        for pert in [100]:
-            print(label, '\n====================')
-            print('PERT = ', pert)
-            for p in ['ert', 'sdm']: #'ert_' + prefix + '_pert_%d' %n_pert)
-                print(p, '\n----------------------------')
-                prefix = '%s_' % p + label + '_pert_%d.pkl' % pert
+AUG = 1.5
+data_aug = True
+print(LMS_SYSTEM,  '\n====================')
+if cross_val:
+    #for label in ['frontal', 'tilted', 'profile']:
+    #for label in ['tilted']:
+    #for label, pert in [['frontal', 90], ['tilted', 100],['profile', 100]]:
+    for label, pert in [['frontal', 90], ['tilted', 100],['profile', 100]]:
+    #for label, pert in [['profile', 100]]:
+        print(label, '\n====================')
+        print('PERT = ', pert)
+        for p in ['ert']: #'ert_' + prefix + '_pert_%d' %n_pert)
+            print(p, '\n----------------------------')
+            for fold in range(N_FOLDS):
+                if data_aug:
+                    prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_%d_aug_%.1f.pkl' % (pert,AUG)
+                elif data_aug == False:
+                    prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_%d.pkl' % (pert)
                 get_test_results(os.path.join(ABS_POSE,label, 'train'),
                                              os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
-                                             os.path.join(os.getcwd(), label), cross_val = False, fold = 0, mean = False)
-
-            p = 'mean'
-            print(p, '\n----------------------------')
-            prefix = '%s_' % p + label + '_pert_%d.pkl' % pert
-            get_test_results(os.path.join(ABS_POSE,label, 'train'),
-                             os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
-                             os.path.join(os.getcwd(), label), cross_val = False, fold = -1, mean = True)
+                                             os.path.join(os.getcwd(), label), cross_val = cross_val, fold = fold, mean = False)
+                print('.........................')
 
 else:
-    for label in ['frontal', 'tilted',  'profile']:
+
+    for label, pert in [['frontal', 90], ['tilted', 100],['profile', 100]]:
         print(label, '\n====================')
-        for pert in [80]:
-            print('PERT = ', pert)
-            for p in ['ert']: #'ert_' + prefix + '_pert_%d' %n_pert)
-                print(p, '\n----------------------------')
-                for fold in range(N_FOLDS):
-                    prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_%d_aug_%.1f.pkl' % (pert,AUG)
-                    get_test_results(os.path.join(ABS_POSE,label, 'train'),
-                                                 os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
-                                                 os.path.join(os.getcwd(), label), cross_val = cross_val, fold = fold, mean = False)
-                    print('.........................')
+        print('PERT = ', pert)
+        for p in ['ert', 'sdm']: #'ert_' + prefix + '_pert_%d' %n_pert)
+            print(p, '\n----------------------------')
+            if data_aug:
+                prefix = '%s_' % p + 'final_%s_pert_%d_aug_%.1f.pkl' % (label, pert, AUG)
+            elif data_aug == False:
+                prefix = '%s_' % p + 'final_%s_pert_%d.pkl' % (label, pert)
 
+            get_test_results(os.path.join(ABS_POSE,label, 'train'),
+                                         os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
+                                         os.path.join(os.getcwd(), label), cross_val = False, fold = 0, mean = False)
 
+        p = 'mean'
+        print(p, '\n----------------------------')
+        prefix = '%s_' % p + 'final_' + label + label + '_pert_%d.pkl' % pert
+        get_test_results(os.path.join(ABS_POSE,label, 'train'),
+                         os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
+                         os.path.join(os.getcwd(), label), cross_val = False, fold = 3, mean = True)
+"""
