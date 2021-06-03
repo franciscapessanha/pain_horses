@@ -141,99 +141,100 @@ def generate_img(all_yaw, all_roll, all_pitch, name, i):
         f = f.astype(np.int)
         f = [i - 1 for i in f]
         faces.append(f)
-        path_bg = random.choice(list(BACKGROUND))
-        img_background = cv.imread(path_bg)
-        #print(np.shape(img_background))
 
-        R_y = all_yaw[i]
-        R_x = all_roll[i]
-        R_z = all_pitch[i]
+    path_bg = random.choice(list(BACKGROUND))
+    img_background = cv.imread(path_bg)
+    #print(np.shape(img_background))
 
-        vertices = rotate_points(vertices)
+    R_y = all_yaw[i]
+    R_x = all_roll[i]
+    R_z = all_pitch[i]
 
-        R_matrix = angles_to_rotmat(R_z, R_y, R_x)
+    vertices = rotate_points(vertices)
 
-        vertices_rot = []
-        for v in vertices:
-            vertices_rot.append(np.dot(R_matrix, v))
+    R_matrix = angles_to_rotmat(R_z, R_y, R_x)
 
-        vertices_rot = np.vstack(vertices_rot)
+    vertices_rot = []
+    for v in vertices:
+        vertices_rot.append(np.dot(R_matrix, v))
 
-        RT = np.concatenate((np.eye(3), np.zeros((3, 1))), axis=-1)
-        RT_4x4 = np.concatenate([RT, np.array([0., 0., 0., 1.])[None, :]], 0)
-        RT_4x4 = np.linalg.inv(RT_4x4)
-        RT_4x4 = RT_4x4 @ np.diag([1, -1, -1, 1])
+    vertices_rot = np.vstack(vertices_rot)
 
-        mesh = trimesh.Trimesh(vertices = vertices_rot, faces=faces, process=False)
-        #mesh.faces = np.fliplr(mesh.faces)
-        for f in range(len(mesh.faces)):
-             mesh.visual.face_colors[f] = np.asarray(colors[f])#trimesh.visual.random_color()
+    RT = np.concatenate((np.eye(3), np.zeros((3, 1))), axis=-1)
+    RT_4x4 = np.concatenate([RT, np.array([0., 0., 0., 1.])[None, :]], 0)
+    RT_4x4 = np.linalg.inv(RT_4x4)
+    RT_4x4 = RT_4x4 @ np.diag([1, -1, -1, 1])
 
-
-        scene = mesh.scene()
-        scene.camera.K = np.load(shape.replace('obj', 'pickle'), 'rb', allow_pickle = True)
-        scene.camera.resolution = tuple([1600, 800])
-        scene.camera_transform = scene.camera.look_at(vertices_rot)
-
-        name = 'yaw_%d_pitch_%d_roll_%d.png' % (R_y,R_z, R_x)
-
-        png = scene.save_image(resolution = scene.camera.resolution, background = [0,0,0], visible = True)
-        with open(os.path.join(TEMP, name) , 'wb') as f:
-            f.write(png)
-            f.close()
-
-        if abs(R_y) < 25:
-            pose = 'frontal'
-        elif abs(R_y) > 50:
-            pose = 'profile'
-        else:
-            pose = 'tilted'
+    mesh = trimesh.Trimesh(vertices = vertices_rot, faces=faces, process=False)
+    #mesh.faces = np.fliplr(mesh.faces)
+    for f in range(len(mesh.faces)):
+         mesh.visual.face_colors[f] = np.asarray(colors[f])#trimesh.visual.random_color()
 
 
-        if R_y < 0:
-            extension = '_indexes.pickle'
-        else:
-            extension = '_sim_indexes.pickle'
-        img_load = cv.imread(os.path.join(TEMP, name))
-        lms, _ = project_pts(mesh.vertices, scene.camera.K, external_parameters = np.dot(np.linalg.inv(RT_4x4),np.linalg.inv(scene.camera_transform))[:3,:])
+    scene = mesh.scene()
+    scene.camera.K = np.load(shape.replace('obj', 'pickle'), 'rb', allow_pickle = True)
+    scene.camera.resolution = tuple([1600, 800])
+    scene.camera_transform = scene.camera.look_at(vertices_rot)
 
-        background_h, background_w = np.shape(img_background)[:2]
-        img_resize, lms_resize = crop_image(img_load, lms)
-        int_lms = np.vstack([lms_resize[i] for i in pickle.load(open(os.path.join(MODELS, pose + extension), 'rb'))])
+    name = 'yaw_%d_pitch_%d_roll_%d.png' % (R_y,R_z, R_x)
 
-        head_h, head_w = np.shape(img_resize)[:2]
+    png = scene.save_image(resolution = scene.camera.resolution, background = [0,0,0], visible = True)
+    with open(os.path.join(TEMP, name) , 'wb') as f:
+        f.write(png)
+        f.close()
 
-        ratio_head = head_h/head_w
-        ratio_background = background_h/background_w
+    if abs(R_y) < 25:
+        pose = 'frontal'
+    elif abs(R_y) > 50:
+        pose = 'profile'
+    else:
+        pose = 'tilted'
 
-        if background_h > background_w:
-            new_background_h = head_h
-            new_background_w = max(background_w * head_h / background_h, head_w)
 
-        if  background_h < background_w:
-            new_background_w = head_w
-            new_background_h = max(background_h * head_w / background_w, head_h)
+    if R_y < 0:
+        extension = '_indexes.pickle'
+    else:
+        extension = '_sim_indexes.pickle'
+    img_load = cv.imread(os.path.join(TEMP, name))
+    lms, _ = project_pts(mesh.vertices, scene.camera.K, external_parameters = np.dot(np.linalg.inv(RT_4x4),np.linalg.inv(scene.camera_transform))[:3,:])
 
-        resize_background = cv.resize(img_background, (int(new_background_w), int(new_background_h)))
+    background_h, background_w = np.shape(img_background)[:2]
+    img_resize, lms_resize = crop_image(img_load, lms)
+    int_lms = np.vstack([lms_resize[i] for i in pickle.load(open(os.path.join(MODELS, pose + extension), 'rb'))])
 
-        new_img = img_resize.copy()
-        for i_h in range(head_h - 1):
-            for i_w in range(head_w - 1):
-                px = img_resize[i_h, i_w, :]
-                if (px == np.asarray([0,0,0])).all(): # 0,0,200 and not [200,200,0] because cv2 works with BGR and not RGB
-                    #print('enter')
-                    new_img[i_h, i_w, :] = resize_background[i_h, i_w, :]
+    head_h, head_w = np.shape(img_resize)[:2]
 
-        img_path = os.path.join(POSE, name, str(i) + '.png')
-        cv.imwrite(img_path, new_img)
-        np.save(img_path.replace('.png', ''), [img_path, lms_resize, R_x, R_z, R_y])
+    ratio_head = head_h/head_w
+    ratio_background = background_h/background_w
+
+    if background_h > background_w:
+        new_background_h = head_h
+        new_background_w = max(background_w * head_h / background_h, head_w)
+
+    if  background_h < background_w:
+        new_background_w = head_w
+        new_background_h = max(background_h * head_w / background_w, head_h)
+
+    resize_background = cv.resize(img_background, (int(new_background_w), int(new_background_h)))
+
+    new_img = img_resize.copy()
+    for i_h in range(head_h - 1):
+        for i_w in range(head_w - 1):
+            px = img_resize[i_h, i_w, :]
+            if (px == np.asarray([0,0,0])).all(): # 0,0,200 and not [200,200,0] because cv2 works with BGR and not RGB
+                #print('enter')
+                new_img[i_h, i_w, :] = resize_background[i_h, i_w, :]
+
+    img_path = os.path.join(POSE, prefix, str(i) + '.png')
+    cv.imwrite(img_path, new_img)
+    np.save(img_path.replace('.png', ''), [img_path, lms_resize, R_x, R_z, R_y])
     return [img_path, lms_resize, R_x, R_z, R_y]
 
 
 #%%============================================================================
                                #MAIN
 #==============================================================================
-for alpha in [0.7]:
+for alpha in [0.8]:
 
     COLORS =  os.path.join(DATASET, '3D_annotations', 'colors')
     SHAPES =  os.path.join(DATASET, '3D_annotations', 'shapes')
@@ -299,11 +300,11 @@ for alpha in [0.7]:
             list_ = glob.glob(os.path.join(os.path.join(POSE,'aug_data_alpha_%.1f_%d' % (alpha, k) ,  '*.npy')))
 
             for i in range(len(all_yaw)):
-                name = 'aug_data_alpha_%.1f_%d' % (alpha, k)
-                if os.path.join(POSE, name ,  '%d.npy' % i) not in list_:
+                prefix = 'aug_data_alpha_%.1f_%d' % (alpha, k)
+                if os.path.join(POSE, prefix ,  '%d.npy' % i) not in list_:
                     print('%d / %d' %(i + 1, (len(all_yaw))))
-                    all_info_train.append(generate_img(all_yaw, all_roll, all_pitch, name, i))
-            save_dataframe(all_info_train, name)
+                    all_info_train.append(generate_img(all_yaw, all_roll, all_pitch, prefix, i))
+            save_dataframe(all_info_train, prefix)
 
 
     # FINAL MODEL
@@ -322,9 +323,9 @@ for alpha in [0.7]:
         random.shuffle(all_roll)
 
         for i in range(len(all_yaw)):
-            name = 'aug_data_alpha_%.1f_final' % (alpha)
-            if os.path.join(POSE, name,  '%d.npy' % i) not in list_:
+            prefix = 'aug_data_alpha_%.1f_final' % (alpha)
+            if os.path.join(POSE, prefix,  '%d.npy' % i) not in list_:
                 print('%d / %d' %(i + 1, (len(all_yaw))))
-                all_info_train.append(generate_img(all_yaw, all_roll, all_pitch, name, i))
+                all_info_train.append(generate_img(all_yaw, all_roll, all_pitch, prefix, i))
 
-            save_dataframe(all_info_train, name)
+            save_dataframe(all_info_train, prefix)

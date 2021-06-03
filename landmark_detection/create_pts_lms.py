@@ -22,7 +22,7 @@ BIG_SIDE = 600
 #LMS_SYSTEM = 'absolute' # complete or absolute
 
 
-DATASET = os.path.join(os.getcwd(),  'dataset')
+DATASET = os.path.join(os.getcwd(),   'dataset')
 ANGLES =  os.path.join(DATASET, '3D_annotations', 'angles')
 data = pickle.load(open(os.path.join(DATASET,  'lms_annotations.pkl'), "rb"))
 # ==============================================================================

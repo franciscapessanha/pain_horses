@@ -50,13 +50,13 @@ for folder in ['frontal', 'tilted','profile']:
         os.mkdir(path)
 
     for k in range(N_FOLDS):
-        for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
+        for AUG in  [0.5, 0.7, 0.9, 1.1, 1.3]:
             sub_path = os.path.join(path,'mean_data_%.1f_%d' % (AUG, k))
             if not os.path.exists(sub_path):
                 os.mkdir(sub_path)
 
     for k in range(N_FOLDS):
-        for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
+        for AUG in  [0.5, 0.7, 0.9, 1.1, 1.3]:
             sub_path = os.path.join(path,'data_%.1f_%d' % (AUG, k))
             if not os.path.exists(sub_path):
                 os.mkdir(sub_path)
@@ -96,7 +96,7 @@ def find_closest_point(silhouete, points):
     new_points = np.vstack(new_points)
     return new_points
 
-formula = 'median'
+formula = 'mean'
 #%%
 BACKGROUND = glob.glob(os.path.join(DATASET, 'flickr_backgrounds', '*.png'))
 
@@ -105,9 +105,10 @@ angles = glob.glob(os.path.join(ANGLES, '*.pickle'))
 shapes = glob.glob(os.path.join(SHAPES, '*.obj'))
 colors_list = glob.glob(os.path.join(COLORS, '*.pickle'))
 
-for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
+for AUG in [0.5, 0.7, 0.9, 1.1, 1.3]:
     print('AUG = %.1f'% AUG)
     for pose,ratio in [['frontal', 600/270], ['tilted', 600/333],['profile', 600/381]]:
+        print(pose)
         #yaw_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'yaw', k)), 'rb'), allow_pickle = True)
         #pitch_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'pitch', k)), 'rb'), allow_pickle = True)
         #roll_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', '%s_%s_%s_fold_%d.pickle' % (pose, AUG, 'roll', k)), 'rb'), allow_pickle = True)
@@ -117,6 +118,7 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
                     yaw_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', 'data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'yaw', k)), 'rb'), allow_pickle = True)
                     pitch_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection','data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'pitch', k)), 'rb'), allow_pickle = True)
                     roll_list = np.load(open(os.path.join(os.getcwd(), 'landmark_detection', 'data_aug', '%s_aug_%s_%s_fold_%d.pickle' % (pose, AUG, 'roll', k)), 'rb'), allow_pickle = True)
+
                     if len(glob.glob(os.path.join(ABS_POSE, pose, 'data_%.1f_%d' % (AUG, k),  '*.png'))) == len(yaw_list):
                         break
                     else:
@@ -168,8 +170,8 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
 
                     # [euler_angles_degrees[2], euler_angles_degrees[0], euler_angles_degrees[1]]  # roll, pitch, yaw
                     R_y = yaw_list[i]
-                    R_x = random.sample(roll_list,1)[0]
-                    R_z = random.sample(pitch_list,1)[0]
+                    R_x = roll_list[i]
+                    R_z = pitch_list[i]
 
                     vertices = rotate_points(vertices)
 
@@ -216,7 +218,6 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
 
                     lms, _ = project_pts(vertices_rot, scene.camera.K, external_parameters = np.dot(np.linalg.inv(RT_4x4),np.linalg.inv(scene.camera_transform))[:3,:])
 
-
                     silhouete = np.vstack(silhouete)
                     silhouete_lms = []
                     for pt in silhouete:
@@ -229,27 +230,24 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
 
 
                     int_lms = np.vstack([lms[j] for j in pickle.load(open(os.path.join(MODELS, pose + '_sim_indexes.pickle'), 'rb'))])
-
-                    #for pt in int_lms:
-                    #    cv.circle(img_load,tuple((int(pt[0]), int(pt[1]))), 5, (255,0,0), -1)
-
-                    #for pt in silhouete:
-                    #    cv.circle(img_load,tuple((int(pt[0]), int(pt[1]))), 5, (200,200,200), -1)
-
-                    #for i, pt in enumerate(int_lms):
-                    #    if i in [*range(0,6), 18, 19, *range(22, 26)]:
-                    #        cv.circle(img_load,tuple((int(pt[0]), int(pt[1]))), 5, (255,255,0), -1)
-
-                    #cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '_image_before_silhotte.png'), img_load)
-
                     update_lms = int_lms.copy()
+                    if pose == 'frontal':
+                        indexes = [0, 2, 3, 5, 30, 31, 32, 33]
+                        for ind in indexes:
+                            update_lms[ind] = find_closest_point(silhouete_lms, [int_lms[ind]])
+                    elif pose == 'tilted':
+                        indexes = [*range(0,6), 18, 19, *range(22, 26)]
+                        for ind in indexes:
+                            update_lms[ind] = find_closest_point(silhouete_lms, [int_lms[ind]])
+                    elif pose == 'profile':
+                        indexes = [0, 1, 2, *range(26, 33)]
+                        for ind in indexes:
+                            update_lms[ind] = find_closest_point(silhouete_lms, [int_lms[ind]])
 
 
                     int_lms = update_lms
-
-                    img, int_lms = crop_image(img_load,int_lms, R_y)
-
-                    img_resize, lms_resize = resize_img(img, int_lms, ratio)
+                    img_crop, lms_crop = crop_image(img_load, int_lms, R_y)
+                    img_resize, lms_resize = resize_img(img_crop, lms_crop, ratio)
 
                     background_h, background_w = np.shape(img_background)[:2]
                     head_h, head_w = np.shape(img_resize)[:2]
@@ -278,8 +276,8 @@ for AUG in [0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0]:
 
                     img_with_pts   = new_img.copy()
 
-                    for pt in lms_resize:
-                        cv.circle(img_with_pts,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
+                    #for pt in lms_resize:
+                    #    cv.circle(img_with_pts,tuple((int(pt[0]), int(pt[1]))), 3, (255,0,0), -1)
 
                     cv.imwrite(os.path.join(EX_FOLDER, pose +'_' + str(k) + '_' + str(i) + '.png'), img_with_pts)
 
