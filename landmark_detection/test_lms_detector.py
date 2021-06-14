@@ -324,7 +324,7 @@ def test_eval(fitter, images, files, mean = False, pose ='',  verbose=True, save
 
         j = 0
         for (y, x) in lms_pred:
-          cv.circle(open_cv_frame, (int(x), int(y)), r, (255,0,0), thickness=-1, lineType=cv.LINE_AA)
+          cv.circle(open_cv_frame, (int(x), int(y)), r, (0,255,0), thickness=-1, lineType=cv.LINE_AA)
           j += 1
 
         file = files[i].split('/')[-1].split('.')[0]
@@ -337,11 +337,11 @@ def test_eval(fitter, images, files, mean = False, pose ='',  verbose=True, save
 
 
         j = 0
-        for (y, x) in lms_gt:
-          cv.circle(gt_frame, (int(x), int(y)), r, (255,0,0), thickness=-1, lineType=cv.LINE_AA)
-          j += 1
+        #for (y, x) in lms_gt:
+        #  cv.circle(gt_frame, (int(x), int(y)), r, (255,0,0), thickness=-1, lineType=cv.LINE_AA)
+        #  j += 1
 
-        cv.imwrite(os.path.join(folder, '%s_gt.jpg' % file), cv.cvtColor(gt_frame, cv.COLOR_BGR2RGB))
+        cv.imwrite(os.path.join(folder, '%s_gt_no_dots.jpg' % file), cv.cvtColor(gt_frame, cv.COLOR_BGR2RGB))
 
           #print(os.path.join(folder, '%s_%.3f_gt.jpg' % (file,np.mean(plm_errors[-1]))))
         for k in range(len(lms_pred)):
@@ -351,13 +351,13 @@ def test_eval(fitter, images, files, mean = False, pose ='',  verbose=True, save
 
       all_errors.append([file, errors_image])
 
-    if fold != -1:
+    if fold != -1 and not data_aug :
         with open(os.path.join(RESULTS,'results_%s_%d_pert_%d_%s.pickle' % (LMS_SYSTEM, fold, pert, label)), 'wb') as f:
             #with open(os.path.join(RESULTS,'full_%s_results_%s.pickle' % (AUG, label)), 'wb') as f:
             # Pickle the 'data' dictionary using the highest protocol available.
             print('print results: ', len(all_errors))
             pickle.dump(all_errors, f)
-    else:
+    elif not data_aug:
         with open(os.path.join(RESULTS,'results_%s_final_pert_%d_%s.pickle' % (LMS_SYSTEM,pert, label)), 'wb') as f:
             #with open(os.path.join(RESULTS,'full_%s_results_%s.pickle' % (AUG, label)), 'wb') as f:
             # Pickle the 'data' dictionary using the highest protocol available.
@@ -367,12 +367,12 @@ def test_eval(fitter, images, files, mean = False, pose ='',  verbose=True, save
     plm_errors = np.vstack(plm_errors)
     per_roi_errors, mean_roi_error = get_lms_error(plm_errors, label)
 
-    if fold != -1:
+    if fold != -1 and not data_aug :
         with open(os.path.join(RESULTS,'results_per_roi_%s_%d_pert_%d_%s.pickle' % (LMS_SYSTEM, fold, pert, label)), 'wb') as f:
             #with open(os.path.join(RESULTS,'full_%s_results_per_roi_%s.pickle' % (AUG, label)), 'wb') as f:
             # Pickle the 'data' dictionary using the highest protocol available.
             pickle.dump(per_roi_errors, f)
-    else:
+    elif not data_aug:
         with open(os.path.join(RESULTS,'results_per_roi_%s_pert_%d_final_%s.pickle' % (LMS_SYSTEM,pert, label)), 'wb') as f:
             #with open(os.path.join(RESULTS,'full_%s_results_per_roi_%s.pickle' % (AUG, label)), 'wb') as f:
             # Pickle the 'data' dictionary using the highest protocol available.
@@ -405,51 +405,60 @@ def get_test_results(path_to_images, fitter_path, save_images_folder, cross_val 
 #%%============================================================================
 #                                   MAIN
 #==============================================================================
-"""
-cross_val = True
-AUG = 1.5
+
+cross_val = False
 data_aug = True
-print(LMS_SYSTEM,  '\n====================')
-if cross_val:
-    #for label in ['frontal', 'tilted', 'profile']:
-    #for label in ['tilted']:
-    #for label, pert in [['frontal', 90], ['tilted', 100],['profile', 100]]:
-    for label, pert in [['frontal', 90], ['tilted', 100],['profile', 100]]:
-    #for label, pert in [['profile', 100]]:
-        print(label, '\n====================')
-        print('PERT = ', pert)
-        for p in ['ert']: #'ert_' + prefix + '_pert_%d' %n_pert)
-            print(p, '\n----------------------------')
-            for fold in range(N_FOLDS):
+#for AUG in [0.1, 0.2, 0.3, 0.5]: #frontal
+for AUG in [0.1]: #profile
+    print(LMS_SYSTEM,  '\n====================')
+    if cross_val:
+        #for label, pert in [['profile', 100]]:
+        for label, pert in[['tilted', 100]]:
+        #for label, pert in [['frontal', 90]]:
+        #for label, pert in [['frontal', 90], ['tilted', 100],['profile', 100]]:
+        #for label, pert in [['profile', 100]]:
+            #'tilted', 100],
+
+            print(label, '\n====================')
+            print('PERT = ', pert)
+            print('AUG = ', AUG)
+            for p in ['ert']: #'ert_' + prefix + '_pert_%d' %n_pert)
+                print(p, '\n----------------------------')
+                for fold in range(N_FOLDS):
+                    if data_aug:
+                        prefix = 'error3_%s_' % p + 'fold_' + str(fold) + '_pert_%d_aug_%.1f.pkl' % (pert,AUG)
+                    elif data_aug == False:
+                        prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_%d.pkl' % (pert)
+
+                    if os.path.exists(os.path.join(ABS_POSE, label,'train', 'fitters', prefix)):
+                        get_test_results(os.path.join(ABS_POSE,label, 'train'),
+                                                     os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
+                                                     os.path.join(os.getcwd(), label), cross_val = cross_val, fold = fold, mean = False)
+                        print('.........................')
+
+    else:
+        #, ['tilted', 100],['profile', 100]
+        #for label, pert, AUG in [['tilted', 100, 0.10]]:
+        for label, pert, AUG in [['frontal', 90, 0.2], ['profile', 100, 1.1], ['tilted', 100, 0.10]]:
+        #for label, pert, AUG in [['profile', 100, 1.1]]:
+            print(label, '\n====================')
+            print('PERT = ', pert)
+            #for p in ['ert', 'sdm']:
+            for p in ['ert']: #'ert_' + prefix + '_pert_%d' %n_pert)
+                print(p, '\n----------------------------')
                 if data_aug:
-                    prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_%d_aug_%.1f.pkl' % (pert,AUG)
+                    prefix = '%s_' % p + 'final_%s_pert_%d_aug_%.1f.pkl' % (label, pert, AUG)
                 elif data_aug == False:
-                    prefix = '%s_' % p + 'fold_' + str(fold) + '_pert_%d.pkl' % (pert)
+                    prefix = '%s_' % p + 'final_%s_pert_%d.pkl' % (label, pert)
+
                 get_test_results(os.path.join(ABS_POSE,label, 'train'),
                                              os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
-                                             os.path.join(os.getcwd(), label), cross_val = cross_val, fold = fold, mean = False)
-                print('.........................')
-
-else:
-
-    for label, pert in [['frontal', 90], ['tilted', 100],['profile', 100]]:
-        print(label, '\n====================')
-        print('PERT = ', pert)
-        for p in ['ert', 'sdm']: #'ert_' + prefix + '_pert_%d' %n_pert)
+                                             os.path.join(os.getcwd(), label), cross_val = False, fold = 0, mean = False)
+            """
+            p = 'mean'
             print(p, '\n----------------------------')
-            if data_aug:
-                prefix = '%s_' % p + 'final_%s_pert_%d_aug_%.1f.pkl' % (label, pert, AUG)
-            elif data_aug == False:
-                prefix = '%s_' % p + 'final_%s_pert_%d.pkl' % (label, pert)
-
+            prefix = '%s_' % p + 'final_' + label + label + '_pert_%d.pkl' % pert
             get_test_results(os.path.join(ABS_POSE,label, 'train'),
-                                         os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
-                                         os.path.join(os.getcwd(), label), cross_val = False, fold = 0, mean = False)
-
-        p = 'mean'
-        print(p, '\n----------------------------')
-        prefix = '%s_' % p + 'final_' + label + label + '_pert_%d.pkl' % pert
-        get_test_results(os.path.join(ABS_POSE,label, 'train'),
-                         os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
-                         os.path.join(os.getcwd(), label), cross_val = False, fold = 3, mean = True)
-"""
+                             os.path.join(ABS_POSE, label,'train', 'fitters', prefix),
+                             os.path.join(os.getcwd(), label), cross_val = False, fold = 3, mean = True)
+            """

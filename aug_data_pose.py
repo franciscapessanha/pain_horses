@@ -87,11 +87,12 @@ def save_dataframe(all_info, name):
             pass
         df_.to_csv (name + '.csv', index = False, header=True)
 
-def get_list_angles(angles_train):
+def get_list_angles(angles_train, all_yaw, all_pitch, all_roll):
     yaw_train = angles_train[:,-1].astype(np.float)
     counts_yaw, bins_yaw, _ = plt.hist(yaw_train, bins=36, range=(-95,95))
     max_counts = max(counts_yaw)
     n_yaw = 0
+
     for i in range(len(bins_yaw) - 1):
         if counts_yaw[i] != 0:
             aug_factor = (max_counts/counts_yaw[i])**alpha
@@ -104,10 +105,11 @@ def get_list_angles(angles_train):
             all_yaw.append(random.uniform(bins_yaw[i], bins_yaw[i + 1]))
 
     pitch_train = angles_train[:,-2].astype(np.float)
-    counts_pitch, bins_pitch, _ = plt.hist(pitch_train, bins=36, range=(-95,95))
+    counts_pitch, bins_pitch, _ = plt.hist(pitch_train, bins=18, range=(-95,95))
 
     for i in range(len(bins_pitch) - 1):
         if counts_pitch[i] != 0:
+            aug_factor = len(all_yaw)/sum(counts_pitch)
             n_new_values = math.ceil(((counts_pitch[i]*n_yaw)/sum(counts_pitch)))
         elif counts_pitch[i] == 0:
             n_new_values = 0
@@ -126,7 +128,40 @@ def get_list_angles(angles_train):
 
         for j in range(n_new_values):
             all_roll.append(random.uniform(bins_roll[i], bins_roll[i + 1]))
+    """
+    max_counts = max(counts_pitch)
+    all_new_values = []
+    for i in range(len(bins_pitch) - 1):
+        if counts_pitch[i] != 0:
+            aug_factor = (max_counts/counts_pitch[i])**alpha
+            all_new_values.append(math.ceil(counts_pitch[i] * (aug_factor - 1)))
+        elif counts_pitch[i] == 0:
+            all_new_values.append(0)
+    for i in range(len(bins_pitch) - 1):
+        a = math.ceil((all_new_values[i] * n_yaw)/sum(all_new_values))
+        for j in range(a):
+            all_pitch.append(random.uniform(bins_pitch[i], bins_pitch[i + 1]))
 
+
+    roll_train = angles_train[:,-3].astype(np.float)
+    counts_roll, bins_roll, _ = plt.hist(roll_train, bins=18, range=(-95,95))
+    max_counts = max(counts_roll)
+    all_new_values = []
+    for i in range(len(bins_roll) - 1):
+        if counts_roll[i] != 0:
+            aug_factor = (max_counts/counts_roll[i])**alpha
+            all_new_values.append(math.ceil(counts_roll[i] * (aug_factor - 1)))
+        elif counts_roll[i] == 0:
+            all_new_values.append(0)
+    n_roll = 0
+    for i in range(len(bins_roll) - 1):
+        a = math.ceil((all_new_values[i] * n_yaw)/sum(all_new_values))
+        for j in range(a):
+            n_roll +=1
+            all_roll.append(random.uniform(bins_roll[i], bins_roll[i + 1]))
+
+
+    """
     return all_yaw, all_pitch, all_roll
 
 def generate_img(all_yaw, all_roll, all_pitch, name, i):
@@ -234,7 +269,7 @@ def generate_img(all_yaw, all_roll, all_pitch, name, i):
 #%%============================================================================
                                #MAIN
 #==============================================================================
-for alpha in [0.8]:
+for alpha in [0.3]:
 
     COLORS =  os.path.join(DATASET, '3D_annotations', 'colors')
     SHAPES =  os.path.join(DATASET, '3D_annotations', 'shapes')
@@ -286,13 +321,12 @@ for alpha in [0.8]:
             all_roll = []
             all_pitch = []
             all_info_train = []
-
             for label in ['frontal', 'tilted', 'profile']:
                 angles_complete_train = np.vstack(np.load(open(os.path.join(ANGLES, '%s_pain_train_angles.pickle' % (label)), 'rb'), allow_pickle = True))
                 angles_val = np.vstack(np.load(open(os.path.join(ANGLES, '%s_pain_val_fold_%d_angles.pickle' % (label, k)), 'rb'), allow_pickle = True))
                 angles_train = np.vstack([i for i in angles_complete_train if i not in angles_val])
 
-                all_yaw, all_pitch, all_roll = get_list_angles(angles_train)
+                all_yaw, all_pitch, all_roll = get_list_angles(angles_train, all_yaw, all_pitch, all_roll)
             random.shuffle(all_yaw)
             random.shuffle(all_pitch)
             random.shuffle(all_roll)
@@ -309,23 +343,24 @@ for alpha in [0.8]:
 
     # FINAL MODEL
     elif MODE == 'final_model':
-        train = []
-
+        all_info_train = []
         all_yaw = []
         all_roll = []
         all_pitch = []
         for label in ['frontal', 'tilted', 'profile']:
             angles_train = np.vstack(np.load(open(os.path.join(ANGLES, '%s_pain_train_angles.pickle' % (label)), 'rb'), allow_pickle = True))
-            all_yaw, all_pitch, all_roll = get_list_angles(angles_train)
+            all_yaw, all_pitch, all_roll = get_list_angles(angles_train, all_yaw, all_pitch, all_roll)
 
         random.shuffle(all_yaw)
         random.shuffle(all_pitch)
         random.shuffle(all_roll)
 
+        prefix = 'aug_data_alpha_%.1f' % (alpha)
+
+        list_ = glob.glob(os.path.join(os.path.join(POSE, prefix,  '*.npy')))
+
         for i in range(len(all_yaw)):
-            prefix = 'aug_data_alpha_%.1f_final' % (alpha)
             if os.path.join(POSE, prefix,  '%d.npy' % i) not in list_:
                 print('%d / %d' %(i + 1, (len(all_yaw))))
                 all_info_train.append(generate_img(all_yaw, all_roll, all_pitch, prefix, i))
-
-            save_dataframe(all_info_train, prefix)
+        save_dataframe(all_info_train, prefix)

@@ -1,0 +1,50 @@
+
+
+import matplotlib.pyplot as plt
+#from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+import os
+import pickle
+import cv2 as cv
+import trimesh
+import glob
+from data_handling.create_pts_lms import crop_image, resize_img, create_pts
+from data_augmentation.utils import *
+#from load_obj import *
+#from transformations import *
+#import math
+from utils import *
+#import random
+
+
+
+EX_FOLDER = os.path.join(os.getcwd(), 'examples')
+N_FOLDS = 3
+
+ABS_POSE = os.path.join(os.getcwd(), 'dataset','abs_pose')
+if not os.path.exists(ABS_POSE):
+    os.mkdir(ABS_POSE)
+
+
+TEMP = os.path.join(os.getcwd(), 'temp')
+
+if not os.path.exists(TEMP):
+    os.mkdir(TEMP)
+def read_pts(filename):
+    return np.loadtxt(filename, comments=("version:", "n_points:", "{", "}"))
+
+for k in range(N_FOLDS):
+    for pose  in ['frontal', 'tilted', 'profile']:
+        images = glob.glob(os.path.join(ABS_POSE, pose, 'form2_data_aug_0.3', '*.png'))
+        for i in range(20):
+            img_path = images[i]
+            img = cv.imread(mg_path)
+
+            lms = read_pts(img_path.replace('png', 'pts'))
+            if i == 0:
+                colors = [list(np.random.choice(range(256), size=3)) for i in range(len(lms))]
+
+            for j,pt in enumerate(lms):
+                cv.imcircle(img, (int(pt[0]), int(pt[1])), 5, tuple(colors[j]), thickness=-1, lineType=cv.LINE_AA)
+
+            cv.imwrite(os.path.join(temp, img_path.split('/')[-1]), img)

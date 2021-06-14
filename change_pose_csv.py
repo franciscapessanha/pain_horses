@@ -74,18 +74,21 @@ def save_dataframe(all_info, name):
 
 
 for k in range(N_FOLDS):
-    for alpha in [0.5, 0.7]:
-        train = pd.read_csv('pose_aug/train_k_%d.csv' % k)
-
+    for alpha in [0.7]:
+        #train = pd.read_csv('pose_aug/train_k_%d.csv' % k)
+        train = pd.read_csv('pose_aug/train.csv')
         list_folders = train['path'][0].split('/')[:8]
 
-        list_ = glob.glob(os.path.join(DATASET, 'pose', 'aug_data_alpha_%.1f_%d' % (alpha, k), '*.npy'))
+        list_ = glob.glob(os.path.join(DATASET, 'pose', 'v2_aug_data_alpha_%.1f_%d' % (alpha, k), '*.npy'))
+        #list_ = glob.glob(os.path.join(DATASET, 'pose', 'v2_aug_data_alpha_%.1f' % (alpha), '*.npy'))
         list_.sort()
         aug = []
         for info in list_:
             aug.append(np.load(info, allow_pickle=True))
-        save_dataframe(aug, 'train_alpha_%.1f_%d' % (alpha, k))
-        aug = pd.read_csv('train_alpha_%.1f_%d.csv' % (alpha, k))
+        save_dataframe(aug, 'train_v2_alpha_%.1f_%d' % (alpha, k))
+        aug = pd.read_csv('train_v2_alpha_%.1f_%d.csv' % (alpha, k))
+        #save_dataframe(aug, 'v2_train_alpha_%.1f' % (alpha))
+        #aug = pd.read_csv('v2_train_alpha_%.1f.csv' % (alpha))
         #%%
         for i, path in enumerate(aug['path']):
             """
@@ -116,7 +119,8 @@ for k in range(N_FOLDS):
             aug['path'][i] = '/' + os.path.join(*list_folders, *aug['path'][i].split('/')[7:])
 
         aug = pd.concat([aug, train])
-        aug.to_csv ('pose_aug/corrected_train_alpha_%.1f_%d.csv' % (alpha, k), index = False, header=True)
+        aug.to_csv ('pose_aug/corrected_v2_train_alpha_%.1f_%d.csv' % (alpha, k), index = False, header=True)
+        #aug.to_csv ('pose_aug/corrected_v2_train_alpha_%.1f.csv' % (alpha), index = False, header=True)
 """
 train = pd.read_csv('pose_aug/train.csv')
 aug = pd.read_csv('pose_aug/train_alpha_%.1f_final.csv' % (alpha))

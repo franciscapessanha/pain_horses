@@ -161,14 +161,18 @@ def train_model(path_to_images, prefix, n_pert):
 
             if data_aug:
                 if formula == 'mean':
-                    ert_pre = 'mean_ert_fold_' + str(k) +  '_pert_%d' %n_pert + '_aug_' + str(AUG)
-                    images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'mean_data_%.1f_%d' % (AUG, k)))
+                    ert_pre = 'error3_ert_fold_' + str(k) +  '_pert_%d' %n_pert + '_aug_' + str(AUG)
+                    images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'error3_data_%.1f_%d' % (AUG, k)))
                 if formula == 'median':
-                    ert_pre = 'ert_fold_' + str(k) +  '_pert_%d' %n_pert + '_aug_' + str(AUG)
-                    images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'data_%.1f_%d' % (AUG, k)))
+                    ert_pre = 'error3_ert_fold_' + str(k) +  '_pert_%d' %n_pert + '_aug_' + str(AUG)
+                    images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'error3_data_%.1f_%d' % (AUG, k)))
+
                 landmarks_aug = images_aug.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
                 images = images + images_aug
                 landmarks = landmarks + landmarks_aug
+                if len(images_aug) == 0:
+                    ert_pre = 'ert_fold_' + str(k) +  '_pert_%d' %n_pert
+
             else:
                 ert_pre = 'ert_fold_' + str(k) +  '_pert_%d' %n_pert
 
@@ -183,20 +187,20 @@ def train_model(path_to_images, prefix, n_pert):
 
         if data_aug:
             ert_pre = 'ert_final_' + prefix + '_pert_%d' %n_pert + '_aug_' + str(AUG)
-            mean_pre =  'mean_final_' + prefix + prefix + '_pert_%d' %n_pert + '_aug_' + str(AUG)
-            sdm_pre = 'sdm_final_' + prefix + '_pert_%d' %n_pert  + '_aug_' + str(AUG)
-            images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'data_%.1f_%d' % (AUG, k)))
+            #mean_pre =  'mean_final_' + prefix + prefix + '_pert_%d' %n_pert + '_aug_' + str(AUG)
+            #sdm_pre = 'sdm_final_' + prefix + '_pert_%d' %n_pert  + '_aug_' + str(AUG)
+            images_aug, files_aug = sorted_image_import(os.path.join('/', *path_to_images.split('/')[:-1], 'error3_data_%.2f_final' % (AUG)))
             landmarks_aug = images_aug.map(lambda x: x.landmarks) #Extracts the landmarks (associated with each image)
             images = images + images_aug
             landmarks = landmarks + landmarks_aug
         else:
             ert_pre = 'ert_final_' + prefix + '_pert_%d' %n_pert
-            mean_pre =  'mean_final_' + prefix + prefix + '_pert_%d' %n_pert
-            sdm_pre = 'sdm_final_' + prefix + '_pert_%d' %n_pert
+            #mean_pre =  'mean_final_' + prefix + prefix + '_pert_%d' %n_pert
+            #sdm_pre = 'sdm_final_' + prefix + '_pert_%d' %n_pert
 
         ERT((images, landmarks), path_to_images, n_pert= n_pert, prefix = ert_pre, verbose = True)
-        new_SDM((images, landmarks), path_to_images, n_pert= n_pert, prefix = sdm_pre, verbose = True)
-        fit_mean_shape((images, landmarks), mean_pre, path_to_images, verbose = True)
+        #new_SDM((images, landmarks), path_to_images, n_pert= n_pert, prefix = sdm_pre, verbose = True)
+        #fit_mean_shape((images, landmarks), mean_pre, path_to_images, verbose = True)
 
 
 
@@ -205,7 +209,7 @@ def train_model(path_to_images, prefix, n_pert):
 #=============================================================================
 
 data_aug = True
-AUG = 1.5
+AUG = 1.3
 LMS_SYSTEM = 'absolute' # complete or absolute
 if LMS_SYSTEM == 'absolute':
     ABS_POSE = os.path.join(DATASET,'abs_pose')
@@ -214,26 +218,28 @@ elif LMS_SYSTEM == 'complete':
 
 
 formula = 'median'
-MODE = 'cross_val'
+MODE = 'final_model'
 if LMS_SYSTEM == 'absolute':
     n_pert = 80
 if LMS_SYSTEM == 'complete':
     n_pert = 100
 
-def main():
+
+#for AUG in [1.2]: #tilted
+for AUG in [0.3]:
     if MODE == 'cross_val':
-        #for n_pert in [110]:
-        train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 90)
+        #train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 80)
         train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 100)
-        train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 100)
+        #train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 100)
 
     elif MODE == 'final_model':
         if LMS_SYSTEM == 'absolute':
-            train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 90)
-            train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 100)
-            train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 100)
+            AUG = 0.
+            #train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 90)
+            #train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 100)
+            #AUG = 1.1
+            #train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 100)
         elif LMS_SYSTEM == 'complete':
             train_model(os.path.join(ABS_POSE,'frontal', 'train'), 'frontal', 80)
             train_model(os.path.join(ABS_POSE,'tilted', 'train'), 'tilted', 90)
             train_model(os.path.join(ABS_POSE,'profile', 'train'), 'profile', 90)
-#main()
