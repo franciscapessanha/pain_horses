@@ -1,4 +1,4 @@
-# Happy Equines 
+# 🐴 Happy Equines 
 **Libraries**
 ```
 pip install statsmodel
