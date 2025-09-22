@@ -43,5 +43,5 @@ pip install networkx
 conda install pytorch==0.4.1 -c pytorch
 conda install xlrd
 conda install -c conda-forge scikit-image
-´´'
+´´´
 
