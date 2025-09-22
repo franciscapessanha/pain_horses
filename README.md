@@ -1,4 +1,4 @@
-# 🐴 Happy Equines 
+# 🐴 Automatic Pain Assessment in Equines
 **Libraries**
 ```
 pip install statsmodel
